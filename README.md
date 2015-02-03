@@ -1,2 +1,4 @@
-# snap
-Version control for database schemas
+#snap
+**Version control for database schemas.**
+
+---
