@@ -5,6 +5,8 @@ package main
 import "github.com/codegangsta/cli"
 import "os"
 import "snap/command"
+import "snap/config"
+import "snap/database"
 
 // Main entry point.
 func main() {
@@ -36,6 +38,10 @@ func main() {
 	app.Action = func(ctx *cli.Context) {
 		cli.ShowAppHelp(ctx)
 	}
+
+	config := config.ParseConfigFile()
+	database.OpenConnection(config)
+	defer database.Close()
 
 	app.Run(os.Args)
 }
