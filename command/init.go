@@ -2,7 +2,10 @@
 package command
 
 // Imports.
+import "fmt"
 import "github.com/codegangsta/cli"
+import "log"
+import "snap/action"
 
 // Command.
 var Init = cli.Command{
@@ -21,6 +24,12 @@ EXAMPLE:
 `,
 
 	Action: func(ctx *cli.Context) {
-		println("Args:", ctx.Args().First())
+		if len(ctx.Args()) > 0 {
+			name := ctx.Args().First()
+			action.InitialiseDatabase(name, 0)
+			return
+		}
+		log.Println("No database name specified")
+		log.Fatalln(fmt.Sprintf("Run '%s help init' for more information", ctx.App.Name))
 	},
 }

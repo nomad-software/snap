@@ -18,7 +18,7 @@ type Database struct {
 }
 
 // Format the Database struct into a valid DSN (data source name) string.
-func (this Database) String() string {
+func (this Database) String() (string) {
 	return fmt.Sprintf("%s:%s@%s(%s:%s)/",
 		this.User,
 		this.Password,
@@ -37,7 +37,7 @@ func NewDatabase() Database {
 }
 
 // Get the full path of the config file.
-func getConfigFilePath() string {
+func getConfigFilePath() (string) {
 	path, err := homedir.Expand("~/.snap")
 	if err != nil {
 		log.Fatalln("Can not determine user's home directory.")
@@ -46,7 +46,7 @@ func getConfigFilePath() string {
 }
 
 // Read the config file.
-func readConfigFile(path string) []byte {
+func readConfigFile(path string) ([]byte) {
 	
 	file, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -67,7 +67,7 @@ The protocol, host and port fields are optional and default to the values shown 
 }
 
 // Parse the config file into a Database struct.
-func ParseConfigFile() Database {
+func ParseConfigFile() (Database) {
 
 	path     := getConfigFilePath()
 	contents := readConfigFile(path);
