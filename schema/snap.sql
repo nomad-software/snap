@@ -14,9 +14,9 @@ DROP TABLE IF EXISTS `snap_config`.`initialisedDatabases` ;
 CREATE TABLE IF NOT EXISTS `snap_config`.`initialisedDatabases` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(64) NOT NULL,
-  `initialized` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `dateInitialized` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE INDEX `databaseName_UNIQUE` (`name` ASC))
+  UNIQUE INDEX `uniqueDatabaseName` (`name` ASC))
 ENGINE = InnoDB;
 
 
@@ -28,11 +28,15 @@ DROP TABLE IF EXISTS `snap_config`.`revisions` ;
 CREATE TABLE IF NOT EXISTS `snap_config`.`revisions` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `databaseId` INT UNSIGNED NOT NULL,
-  `revision` INT UNSIGNED NOT NULL DEFAULT 1,
+  `revision` INT UNSIGNED NOT NULL,
   `upSql` TEXT NOT NULL,
   `downSql` TEXT NOT NULL,
+  `fullSql` TEXT NOT NULL COMMENT 'SQL snapshot after applying update SQL.',
+  `comment` VARCHAR(255) NOT NULL,
+  `dateApplied` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  INDEX `fk_revisions_initialisedDatabases_idx` (`databaseId` ASC),
+  INDEX `databaseIdForeignKey` (`databaseId` ASC),
+  UNIQUE INDEX `uniqueDatabaseIdAndRevision` (`databaseId` ASC, `revision` ASC),
   CONSTRAINT `fk_revisions_initialisedDatabases`
     FOREIGN KEY (`databaseId`)
     REFERENCES `snap_config`.`initialisedDatabases` (`id`)

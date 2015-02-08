@@ -26,7 +26,7 @@ EXAMPLE:
 	Action: func(ctx *cli.Context) {
 		if len(ctx.Args()) > 0 {
 			name := ctx.Args().First()
-			action.InitialiseDatabase(name, 0)
+			action.InitialiseDatabase(name)
 			return
 		}
 		log.Println("No database name specified")

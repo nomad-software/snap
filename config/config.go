@@ -70,8 +70,8 @@ The protocol, host and port fields are optional and default to the values shown 
 func ParseConfigFile() (Database) {
 
 	path     := getConfigFilePath()
-	contents := readConfigFile(path);
-	config   := NewDatabase();
+	contents := readConfigFile(path)
+	config   := NewDatabase()
 
 	err := json.Unmarshal(contents, &config)
 	if err != nil {
