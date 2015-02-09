@@ -12,8 +12,11 @@ const (
 )
 
 // Check if the snap config database exists.
-func ConfigDatabaseExists() (bool) {
-	return DatabaseExists(configDatabaseName)
+func AssertConfigDatabaseExists() {
+	if !DatabaseExists(configDatabaseName) {
+		log.Println("Snap config database does not exist")
+		CreateConfigDatabase()
+	}
 }
 
 // Switch to using the config database.

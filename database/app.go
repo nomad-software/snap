@@ -24,11 +24,13 @@ func InitialiseDatabase(name string) {
 	if result != nil {
 		insertId, err = result.LastInsertId()
 
+		fullSql := DumpDatabase(name)
+
 		query := `INSERT INTO revisions
 			(databaseId, revision, upSql, downSql, fullSql, comment)
-			VALUES (?, 1, "", "", "", "Database initialised.");`
+			VALUES (?, 1, "", "", ?, "Database initialised.");`
 
-		_, err = transaction.Exec(query, insertId)
+		_, err = transaction.Exec(query, insertId, fullSql)
 		ExitOnError(err, fmt.Sprintf("Database '%s' is already being managed.", name))
 	}
 

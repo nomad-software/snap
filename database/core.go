@@ -46,10 +46,23 @@ func DatabaseExists(name string) (bool) {
 	return err == nil
 }
 
+// Assert the a database exists. If not throw a fatal error.
+func AssertDatabaseExists(name string) {
+	if !DatabaseExists(name) {
+		log.Println(fmt.Sprintf("Database '%s' does not exist.", name))
+	}
+}
+
 // Change the database to the one named in the name parameter.
 func UseDatabase(name string) (error) {
 	_, err := db.Exec(fmt.Sprintf("USE %s;", name))
 	return err
+}
+
+// Asser the database can be used. If not throw a fatal error.
+func AssertUseDatabase(name string) {
+	err := UseDatabase(name)
+	ExitOnError(err, fmt.Sprintf("Can not use '%s' database.", name))
 }
 
 // Drop a database.
@@ -60,6 +73,6 @@ func DropDatabase(name string) (error) {
 
 // Create a database.
 func CreateDatabase(name string) (error) {
-	_, err := db.Exec(fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;", name))
+	_, err := db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;", name))
 	return err
 }
