@@ -9,19 +9,40 @@ import _ "github.com/go-sql-driver/mysql"
 // Dump the entire schema of a database in SQL format to a string.
 func DumpDatabase(databaseName string) (string) {
 	AssertUseDatabase(databaseName)
-	sqlFragments := []string{
-		generateDatabaseDump(databaseName),
-		generateTablesDump(databaseName),
-		generateFunctionsDump(databaseName),
-		generateProceduresDump(databaseName),
-		generateTriggersDump(databaseName),
+	output := []string{
+		exportDatabase(databaseName),
+		exportTables(databaseName),
+		exportFunctions(databaseName),
+		exportProcedures(databaseName),
+		exportTriggers(databaseName),
+	}
+	sqlFragments := make([]string, 0)
+	for _, sqlFragment := range output {
+		if sqlFragment != "" {
+			sqlFragments = append(sqlFragments, sqlFragment)
+		}
 	}
 	return strings.Join(sqlFragments, "\n\n");
 }
 
-// Generate a create database string for the passed database.
+// Generate a comment to separate the sections.
+func generateCommentHeading(heading string) (string) {
+	line := "-- +----------------------------------------------------------------------------"
+	return fmt.Sprintf("%s\n-- | %s\n%s", line, heading, line)
+}
+
+// Prepend a comment header to the passed slice of SQL fragments.
+// If the slice is empty, just return the empty slice.
+func prependCommentHeader(heading string, sqlFragments []string) ([]string) {
+	if len(sqlFragments) > 0 {
+		return append([]string{generateCommentHeading(heading)}, sqlFragments...)
+	}
+	return sqlFragments
+}
+
+// Export the database SQL.
 // This function assumes the database exists and is being used.
-func generateDatabaseDump(databaseName string) string {
+func exportDatabase(databaseName string) string {
 	query :=`SELECT
 		SCHEMA_NAME,
 		DEFAULT_CHARACTER_SET_NAME,
@@ -36,23 +57,30 @@ func generateDatabaseDump(databaseName string) string {
 		err = rows.Scan(&name, &charSet, &collation)
 		ExitOnError(err, fmt.Sprintf("Can not read schema information for database '%s'.", databaseName))
 	}
-	return fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET %s COLLATE %s;", string(name), string(charSet), string(collation))
-}
 
-// Create the tables dump string for an entire database.
-// This function assumes the database exists and is being used.
-func generateTablesDump(databaseName string) (string) {
-	tables := getAllTables(databaseName)
 	sqlFragments := make([]string, 0)
-	for _, table := range tables {
-		sqlFragments = append(sqlFragments, generateSingleTableDump(table))
-	}
+	sqlFragments = append(sqlFragments, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET %s COLLATE %s;", databaseName, string(charSet), string(collation)))
+	sqlFragments = append(sqlFragments, fmt.Sprintf("USE DATABASE `%s`;", databaseName))
+	sqlFragments = prependCommentHeader("Database", sqlFragments)
+
 	return strings.Join(sqlFragments, "\n\n");
 }
 
-// Get all the tables inside the passed database.
+// Export table SQL string for an entire database.
 // This function assumes the database exists and is being used.
-func getAllTables(databaseName string) ([]string) {
+func exportTables(databaseName string) (string) {
+	tables := getAllTableNames(databaseName)
+	sqlFragments := make([]string, 0)
+	for _, table := range tables {
+		sqlFragments = append(sqlFragments, exportTable(table))
+	}
+	sqlFragments = prependCommentHeader("Tables", sqlFragments)
+	return strings.Join(sqlFragments, "\n\n");
+}
+
+// Retrieve all the table names from the passed database.
+// This function assumes the database exists and is being used.
+func getAllTableNames(databaseName string) ([]string) {
 	rows, err := db.Query("SHOW TABLES;")
 	ExitOnError(err, fmt.Sprintf("Can not access table information for database '%s'.", databaseName))
 	var table []byte
@@ -65,9 +93,9 @@ func getAllTables(databaseName string) ([]string) {
 	return tables
 }
 
-// Create the table dump string for one table.
+// Export the table SQL for one table.
 // This function assumes the table exists.
-func generateSingleTableDump(tableName string) (string) {
+func exportTable(tableName string) (string) {
 	rows, err := db.Query(fmt.Sprintf("SHOW CREATE TABLE %s;", tableName))
 	ExitOnError(err, fmt.Sprintf("Can not read creation information for table '%s'.", tableName))
 	var name, sqlFragment []byte
@@ -75,23 +103,27 @@ func generateSingleTableDump(tableName string) (string) {
 		err = rows.Scan(&name, &sqlFragment)
 		ExitOnError(err, fmt.Sprintf("Can not read creation sql for table '%s'.", tableName))
 	}
+	// The ending semi-colon is always missing when retrieving an SQL fragment like this.
+	sqlFragment = append(sqlFragment, ';')
 	return string(sqlFragment)
 }
 
-// Create the functions dump string for an entire database.
+// Export function SQL string for an entire database.
 // This function assumes the database exists and is being used.
-func generateFunctionsDump(databaseName string) (string) {
-	functions := getAllFunctions(databaseName)
+func exportFunctions(databaseName string) (string) {
+	functions := getAllFunctionNames(databaseName)
 	sqlFragments := make([]string, 0)
 	for _, function := range functions {
-		sqlFragments = append(sqlFragments, generateSingleFunctionDump(function))
+		sqlFragments = append(sqlFragments, exportFunction(function))
 	}
+	sqlFragments = wrapFragmentsWithSafeDelimiters(sqlFragments)
+	sqlFragments = prependCommentHeader("Functions", sqlFragments)
 	return strings.Join(sqlFragments, "\n\n");
 }
 
-// Get all the functions inside the passed database.
+// Retrieve all the function names from the passed database.
 // This function assumes the database exists and is being used.
-func getAllFunctions(databaseName string) ([]string) {
+func getAllFunctionNames(databaseName string) ([]string) {
 	rows, err := db.Query("SHOW FUNCTION STATUS WHERE Db = ?;", databaseName)
 	ExitOnError(err, fmt.Sprintf("Can not access function information for database '%s'.", databaseName))
 	var database, name, type_, definer, modified, created, security, comment, charSet, collationCon, collationDb []byte
@@ -104,9 +136,9 @@ func getAllFunctions(databaseName string) ([]string) {
 	return functions
 }
 
-// Create the function dump string for one function.
+// Export the table SQL for one function.
 // This function assumes the function exists.
-func generateSingleFunctionDump(functionName string) (string) {
+func exportFunction(functionName string) (string) {
 	rows, err := db.Query(fmt.Sprintf("SHOW CREATE FUNCTION %s;", functionName))
 	ExitOnError(err, fmt.Sprintf("Can not read creation information for function '%s'.", functionName))
 	var name, mode, sqlFragment, charSet, collationCon, collationDb []byte
@@ -114,23 +146,27 @@ func generateSingleFunctionDump(functionName string) (string) {
 		err = rows.Scan(&name, &mode, &sqlFragment, &charSet, &collationCon, &collationDb)
 		ExitOnError(err, fmt.Sprintf("Can not read creation sql for function '%s'.", functionName))
 	}
+	// The ending safe delimiter is always missing when retrieving an SQL fragment like this.
+	sqlFragment = append(sqlFragment, '$', '$')
 	return string(sqlFragment)
 }
 
-// Create the procedures dump string for an entire database.
+// Export procedure SQL string for an entire database.
 // This function assumes the database exists and is being used.
-func generateProceduresDump(databaseName string) (string) {
-	procedures := getAllProcedures(databaseName)
+func exportProcedures(databaseName string) (string) {
+	procedures := getAllProcedureNames(databaseName)
 	sqlFragments := make([]string, 0)
 	for _, procedure := range procedures {
-		sqlFragments = append(sqlFragments, generateSingleProcedureDump(procedure))
+		sqlFragments = append(sqlFragments, exportProcedure(procedure))
 	}
+	sqlFragments = wrapFragmentsWithSafeDelimiters(sqlFragments)
+	sqlFragments = prependCommentHeader("Procedures", sqlFragments)
 	return strings.Join(sqlFragments, "\n\n");
 }
 
-// Get all the procedures inside the passed database.
+// Retrieve all the procedure names from the passed database.
 // This function assumes the database exists and is being used.
-func getAllProcedures(databaseName string) ([]string) {
+func getAllProcedureNames(databaseName string) ([]string) {
 	rows, err := db.Query("SHOW PROCEDURE STATUS WHERE Db = ?;", databaseName)
 	ExitOnError(err, fmt.Sprintf("Can not access procedure information for database '%s'.", databaseName))
 	var database, name, type_, definer, modified, created, security, comment, charSet, collationCon, collationDb []byte
@@ -143,9 +179,9 @@ func getAllProcedures(databaseName string) ([]string) {
 	return procedures
 }
 
-// Create the procedure dump string for one procedure.
+// Export the table SQL for one procedure.
 // This function assumes the procedure exists.
-func generateSingleProcedureDump(procedureName string) (string) {
+func exportProcedure(procedureName string) (string) {
 	rows, err := db.Query(fmt.Sprintf("SHOW CREATE PROCEDURE %s;", procedureName))
 	ExitOnError(err, fmt.Sprintf("Can not read creation information for procedure '%s'.", procedureName))
 	var name, mode, sqlFragment, charSet, collationCon, collationDb []byte
@@ -153,23 +189,27 @@ func generateSingleProcedureDump(procedureName string) (string) {
 		err = rows.Scan(&name, &mode, &sqlFragment, &charSet, &collationCon, &collationDb)
 		ExitOnError(err, fmt.Sprintf("Can not read creation sql for procedure '%s'.", procedureName))
 	}
+	// The ending safe delimiter is always missing when retrieving an SQL fragment like this.
+	sqlFragment = append(sqlFragment, '$', '$')
 	return string(sqlFragment)
 }
 
-// Create the triggers dump string for an entire database.
+// Export trigger SQL string for an entire database.
 // This function assumes the database exists and is being used.
-func generateTriggersDump(databaseName string) (string) {
-	triggers := getAllTriggers(databaseName)
+func exportTriggers(databaseName string) (string) {
+	triggers := getAllTriggerNames(databaseName)
 	sqlFragments := make([]string, 0)
 	for _, trigger := range triggers {
-		sqlFragments = append(sqlFragments, generateSingleTriggerDump(trigger))
+		sqlFragments = append(sqlFragments, exportTrigger(trigger))
 	}
+	sqlFragments = wrapFragmentsWithSafeDelimiters(sqlFragments)
+	sqlFragments = prependCommentHeader("Triggers", sqlFragments)
 	return strings.Join(sqlFragments, "\n\n");
 }
 
-// Get all the triggers inside the passed database.
+// Retrieve all the trigger names from the passed database.
 // This function assumes the database exists and is being used.
-func getAllTriggers(databaseName string) ([]string) {
+func getAllTriggerNames(databaseName string) ([]string) {
 	rows, err := db.Query(fmt.Sprintf("SHOW TRIGGERS FROM %s;", databaseName))
 	ExitOnError(err, fmt.Sprintf("Can not access trigger information for database '%s'.", databaseName))
 	var name, event, table, statement, timing, created, mode, definer, charSet, collationCon, collationDb []byte
@@ -182,9 +222,9 @@ func getAllTriggers(databaseName string) ([]string) {
 	return triggers
 }
 
-// Create the trigger dump string for one trigger.
+// Export the table SQL for one trigger.
 // This function assumes the trigger exists.
-func generateSingleTriggerDump(triggerName string) (string) {
+func exportTrigger(triggerName string) (string) {
 	rows, err := db.Query(fmt.Sprintf("SHOW CREATE TRIGGER %s;", triggerName))
 	ExitOnError(err, fmt.Sprintf("Can not read creation information for trigger '%s'.", triggerName))
 	var name, mode, sqlFragment, charSet, collationCon, collationDb []byte
@@ -192,5 +232,17 @@ func generateSingleTriggerDump(triggerName string) (string) {
 		err = rows.Scan(&name, &mode, &sqlFragment, &charSet, &collationCon, &collationDb)
 		ExitOnError(err, fmt.Sprintf("Can not read creation sql for trigger '%s'.", triggerName))
 	}
+	// The ending safe delimiter is always missing when retrieving an SQL fragment like this.
+	sqlFragment = append(sqlFragment, '$', '$')
 	return string(sqlFragment)
+}
+
+// Wrap delimiter sensitive SQL fragments with safe delimiters.
+// If the passed slice is empty, just return it.
+func wrapFragmentsWithSafeDelimiters(sqlFragments []string) ([]string) {
+	if len(sqlFragments) > 0 {
+		sqlFragments = append([]string{"DELIMITER $$"}, sqlFragments...)
+		sqlFragments = append(sqlFragments, "DELIMITER ;")
+	}
+	return sqlFragments
 }
