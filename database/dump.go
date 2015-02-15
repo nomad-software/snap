@@ -4,7 +4,7 @@ package database
 // Imports.
 import "fmt"
 import "strings"
-import _ "github.com/go-sql-driver/mysql"
+import _ "github.com/nomad-software/mysql"
 
 // Dump the entire schema of a database in SQL format to a string.
 func DumpDatabase(databaseName string) (string) {

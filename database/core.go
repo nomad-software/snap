@@ -6,7 +6,7 @@ import "database/sql"
 import "fmt"
 import "log"
 import "snap/config"
-import _ "github.com/go-sql-driver/mysql"
+import _ "github.com/nomad-software/mysql"
 
 // Global database struct.
 var db *sql.DB

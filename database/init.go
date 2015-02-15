@@ -3,17 +3,11 @@ package database
 
 // Imports.
 import "log"
-import "os"
-import _ "github.com/go-sql-driver/mysql"
+import _ "github.com/nomad-software/mysql"
 
-// Constants.
-const (
-	configDatabaseName = "snap_config"
-)
-
-// Check if the snap config database exists.
+// Check if the snap config database exists. if it doesn't, create it.
 func AssertConfigDatabaseExists() {
-	if !DatabaseExists(configDatabaseName) {
+	if !DatabaseExists("snap_config") {
 		log.Println("Snap config database does not exist")
 		CreateConfigDatabase()
 	}
@@ -21,65 +15,64 @@ func AssertConfigDatabaseExists() {
 
 // Switch to using the config database.
 func UseConfigDatabase() {
-	err := UseDatabase(configDatabaseName)
+	err := UseDatabase("snap_config")
 	ExitOnError(err, "Can not use config database.")
 }
 
 // Create the snap config database and all associated tables.
 func CreateConfigDatabase() {
-	success := true;
-	success = success && createConfigDatabase()
-	success = success && createConfigDatabasesTable()
-	success = success && createConfigRevisionsTable()
-	if !success {
-		os.Exit(1)
-	}
-	log.Println("New snap config database created successfully")
-}
-
-// Create the config database.
-func createConfigDatabase() (bool) {
-	err := CreateDatabase(configDatabaseName)
-	return WasSuccessful(err)
-}
-
-// Create the config database's database table.
-func createConfigDatabasesTable() (bool) {
 	sql := `
-CREATE TABLE IF NOT EXISTS ` + configDatabaseName + `.initialisedDatabases (
+SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
+SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
+SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL,ALLOW_INVALID_DATES';
+
+DROP SCHEMA IF EXISTS snap_config ;
+CREATE SCHEMA IF NOT EXISTS snap_config DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci ;
+USE snap_config ;
+
+-- -----------------------------------------------------
+-- Table snap_config.initialisedDatabases
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS snap_config.initialisedDatabases ;
+
+CREATE TABLE IF NOT EXISTS snap_config.initialisedDatabases (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(64) NOT NULL,
   dateInitialized TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE INDEX uniqueDatabaseName (name ASC))
 ENGINE = InnoDB;
-`
-	_, err := db.Exec(sql)
-	return WasSuccessful(err)
-}
 
-// Create the config database's revisions table.
-func createConfigRevisionsTable() (bool) {
-	sql := `
-CREATE TABLE IF NOT EXISTS ` + configDatabaseName + `.revisions (
+
+-- -----------------------------------------------------
+-- Table snap_config.revisions
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS snap_config.revisions ;
+
+CREATE TABLE IF NOT EXISTS snap_config.revisions (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   databaseId INT UNSIGNED NOT NULL,
   revision INT UNSIGNED NOT NULL,
-  upSql TEXT NOT NULL,
-  downSql TEXT NOT NULL,
+  upSql TEXT NULL DEFAULT NULL,
+  downSql TEXT NULL DEFAULT NULL,
   fullSql TEXT NOT NULL COMMENT 'SQL snapshot after applying update SQL.',
   comment VARCHAR(255) NOT NULL,
   dateApplied TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  INDEX databaseId_FK (databaseId ASC),
+  INDEX databaseIdForeignKey (databaseId ASC),
   UNIQUE INDEX uniqueDatabaseIdAndRevision (databaseId ASC, revision ASC),
-  CONSTRAINT databaseIdForeignKey
+  CONSTRAINT fk_revisions_initialisedDatabases
     FOREIGN KEY (databaseId)
-    REFERENCES ` + configDatabaseName + `.initialisedDatabases (id)
+    REFERENCES snap_config.initialisedDatabases (id)
     ON DELETE CASCADE
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
+
+
+SET SQL_MODE=@OLD_SQL_MODE;
+SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
+SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 `
 	_, err := db.Exec(sql)
-	return WasSuccessful(err)
+	ExitOnError(err, "Can not create config database.")
 }
