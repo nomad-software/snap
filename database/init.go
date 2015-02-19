@@ -3,12 +3,11 @@ package database
 
 // Imports.
 import "log"
-import _ "github.com/nomad-software/mysql"
 
 // Check if the snap config database exists. if it doesn't, create it.
 func AssertConfigDatabaseExists() {
 	if !DatabaseExists("snap_config") {
-		log.Println("Snap config database does not exist")
+		log.Println("Snap config database does not exist.")
 		CreateConfigDatabase()
 	}
 }
@@ -73,6 +72,7 @@ SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 `
-	_, err := db.Exec(sql)
-	ExitOnError(err, "Can not create config database.")
+	err := ExecMulti(sql)
+	ExitOnError(err, "Snap config database creation failed.")
+	log.Println("Snap config database created successfully.")
 }

@@ -40,7 +40,7 @@ func main() {
 	}
 
 	config := config.ParseConfigFile()
-	database.OpenConnection(config)
+	database.Open(config)
 	defer database.Close()
 
 	app.Run(os.Args)
