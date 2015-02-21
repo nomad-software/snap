@@ -53,25 +53,17 @@ func Exec(sql string, params ...interface{}) (err error) {
 	return
 }
 
-// Execute an unsafe statement not expecting results, where all string 
-// parameters should be escaped. The format of the SQL string should be the 
-// same as the fmt.Sprintf function.
+// Execute an unsafe statement not expecting results. This function is used 
+// very similarly to the fmt.Sprintf function and all format specifiers are 
+// supported. Escaping of parameters is handled in the wrapped library.
 func ExecUnsafe(sql string, params ...interface{}) (err error) {
-	escaped := make([]interface{}, 0)
-	for _, param := range params {
-		value, ok := param.(string)
-		if ok {
-			escaped = append(escaped, db.Escape(value))
-		} else {
-			escaped = append(escaped, param)
-		}
-	}
-	_, _, err = db.Query(sql, escaped...)
-	return err
+	_, _, err = db.Query(sql, params...)
+	return
 }
 
 // Execute a multi-statement query expecting no results. This is especially 
-// useful for executing many SQL statements in one go.
+// useful for executing many SQL statements in one go, such as applying DDL's 
+// to an existing schema.
 func ExecMulti(sql string) (error) {
 	result, err := db.Start(sql)
 	if err != nil {
@@ -87,7 +79,7 @@ func ExecMulti(sql string) (error) {
 	return err
 }
 
-// Execute a prepared statement expecting results.
+// Execute a prepared statement expecting multiple results.
 func Query(sql string, params ...interface{}) (rows []mysql.Row, err error) {
 	statement, err := db.Prepare(sql)
 	if err != nil {
@@ -101,7 +93,15 @@ func Query(sql string, params ...interface{}) (rows []mysql.Row, err error) {
 	return
 }
 
-// Execute a prepared statement expecting results.
+// Execute an unsafe statement expecting multiple results. This function is 
+// used very similarly to the fmt.Sprintf function and all format specifiers are 
+// supported. Escaping of parameters is handled in the wrapped library.
+func QueryUnsafe(sql string, params ...interface{}) (rows []mysql.Row, err error) {
+	rows, _, err = db.Query(sql, params...)
+	return
+}
+
+// Execute a prepared statement expecting a single row result.
 func QueryRow(sql string, params ...interface{}) (row mysql.Row, err error) {
 	statement, err := db.Prepare(sql)
 	if err != nil {
@@ -115,8 +115,20 @@ func QueryRow(sql string, params ...interface{}) (row mysql.Row, err error) {
 	return
 }
 
-// Execute a prepared statement to insert data. The insert id is returned.
-func Insert(sql string, params ...interface{}) (insertId uint64, err error) {
+// Execute an unsafe statement expecting a single row result. This function is 
+// used very similarly to the fmt.Sprintf function and all format specifiers are 
+// supported. Escaping of parameters is handled in the wrapped library.
+func QueryRowUnsafe(sql string, params ...interface{}) (row mysql.Row, err error) {
+	rows, _, err := db.Query(sql, params...)
+	if len(rows) > 0 {
+		row = rows[0]
+	}
+	return
+}
+
+// Execute a prepared statement to insert a single row. The insert id is 
+// returned.
+func InsertRow(sql string, params ...interface{}) (insertId uint64, err error) {
 	statement, err := db.Prepare(sql)
 	if err != nil {
 		return
@@ -150,36 +162,37 @@ func Rollback() {
 
 // Create a database.
 func CreateDatabase(name string) (error) {
-	err := ExecUnsafe("CREATE DATABASE IF NOT EXISTS %s DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;", name)
+	err := ExecUnsafe("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;", name)
 	return err
 }
 
-// Drop a database.
-func DropDatabase(name string) (error) {
-	err := ExecUnsafe("DROP SCHEMA IF EXISTS %s;", name)
+// Change the database to the one named in the name parameter.
+func useDatabase(name string) (error) {
+	err := ExecUnsafe("USE `%s`;", name)
 	return err
 }
+
+// Asser the database can be used. If not throw a fatal error.
+func AssertUseDatabase(name string) {
+	err := useDatabase(name)
+	ExitOnError(err, fmt.Sprintf("Can not use '%s' database.", name))
+}
+
 // Check if a database exists.
 func DatabaseExists(name string) (bool) {
-	err := UseDatabase(name)
+	err := useDatabase(name)
 	return WasSuccessful(err)
 }
 
 // Assert the a database exists. If not throw a fatal error.
 func AssertDatabaseExists(name string) {
 	if !DatabaseExists(name) {
-		log.Println(fmt.Sprintf("Database '%s' does not exist.", name))
+		log.Fatalln(fmt.Sprintf("Database '%s' does not exist.", name))
 	}
 }
 
-// Change the database to the one named in the name parameter.
-func UseDatabase(name string) (error) {
-	err := ExecUnsafe("USE %s;", name)
+// Drop a database.
+func DropDatabase(name string) (error) {
+	err := ExecUnsafe("DROP SCHEMA IF EXISTS `%s`;", name)
 	return err
-}
-
-// Asser the database can be used. If not throw a fatal error.
-func AssertUseDatabase(name string) {
-	err := UseDatabase(name)
-	ExitOnError(err, fmt.Sprintf("Can not use '%s' database.", name))
 }

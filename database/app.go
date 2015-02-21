@@ -12,14 +12,14 @@ func InitialiseDatabase(name string) {
 	UseConfigDatabase()
 	StartTransaction()
 
-		insertId, err := Insert("INSERT INTO initialisedDatabases (name) VALUES (?)", name)
+		insertId, err := InsertRow("INSERT INTO initialisedDatabases (name) VALUES (?)", name)
 		ExitOnError(err, fmt.Sprintf("Database '%s' is already being managed.", name))
 
 		query := `INSERT INTO revisions
 			(databaseId, revision, upSql, downSql, fullSql, comment)
 			VALUES (?, 1, NULL, NULL, ?, "Database initialised.");`
 
-		_, err = Insert(query, insertId, fullSql)
+		_, err = InsertRow(query, insertId, fullSql)
 		ExitOnError(err, fmt.Sprintf("Database '%s' is already being managed.", name))
 
 	Commit()

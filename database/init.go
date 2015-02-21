@@ -14,8 +14,7 @@ func AssertConfigDatabaseExists() {
 
 // Switch to using the config database.
 func UseConfigDatabase() {
-	err := UseDatabase("snap_config")
-	ExitOnError(err, "Can not use config database.")
+	AssertUseDatabase("snap_config")
 }
 
 // Create the snap config database and all associated tables.
