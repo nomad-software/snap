@@ -4,7 +4,7 @@ package action
 // Imports.
 import "fmt"
 import "log"
-import "snap/database"
+import "github.com/nomad-software/snap/database"
 
 // Initialise a datbase to be managed by snap.
 func InitialiseDatabase(name string) {

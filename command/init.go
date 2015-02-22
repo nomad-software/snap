@@ -4,8 +4,8 @@ package command
 // Imports.
 import "fmt"
 import "github.com/codegangsta/cli"
+import "github.com/nomad-software/snap/action"
 import "log"
-import "snap/action"
 
 // Command.
 var Init = cli.Command{

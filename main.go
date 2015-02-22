@@ -3,10 +3,10 @@ package main
 
 // Imports.
 import "github.com/codegangsta/cli"
+import "github.com/nomad-software/snap/command"
+import "github.com/nomad-software/snap/config"
+import "github.com/nomad-software/snap/database"
 import "os"
-import "snap/command"
-import "snap/config"
-import "snap/database"
 
 // Main entry point.
 func main() {

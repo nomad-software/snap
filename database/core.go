@@ -3,9 +3,9 @@ package database
 
 // Imports.
 import "fmt"
+import "github.com/nomad-software/snap/config"
 import "github.com/ziutek/mymysql/mysql"
 import "log"
-import "snap/config"
 import _ "github.com/ziutek/mymysql/native"
 
 // Global database struct.
