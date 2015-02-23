@@ -22,9 +22,11 @@ func WasSuccessful(err error) (bool) {
 	return true
 }
 
-// Handle a fatal error that will halt program execution.
+// Handle a fatal error that will halt program execution. Rollback any 
+// transaction that is pending.
 func ExitOnError(err error, messages ...interface{}) {
 	if err != nil {
+		Rollback()
 		log.Println(err)
 		log.Fatalln(messages...)
 	}
@@ -34,8 +36,8 @@ func ExitOnError(err error, messages ...interface{}) {
 func Open(config config.Database) {
 	_db := mysql.New(config.Protocol, "", config.Host + ":" + config.Port, config.User, config.Password, "")
 	err := _db.Connect()
-	db = _db
 	ExitOnError(err, "Database connection could not be established.")
+	db = _db
 }
 
 // Close the datbase connection.
@@ -144,8 +146,8 @@ func InsertRow(sql string, params ...interface{}) (insertId uint64, err error) {
 // Start a transaction.
 func StartTransaction() {
 	_tx, err := db.Begin()
-	tx = _tx
 	ExitOnError(err, "Error occurred starting transaction.")
+	tx = _tx
 }
 
 // Commit a transaction.
@@ -156,8 +158,10 @@ func Commit() {
 
 // Rollback a transaction.
 func Rollback() {
-	err := tx.Rollback()
-	ExitOnError(err, "Error occurred rolling back transaction.")
+	if tx.IsValid() {
+		err := tx.Rollback()
+		ExitOnError(err, "Error occurred rolling back transaction.")
+	}
 }
 
 // Create a database.
