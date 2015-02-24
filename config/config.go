@@ -10,6 +10,21 @@ import "log"
 
 // Package config struct used as a cache.
 var config *Config
+var jsonInfo string = `The config file should be in the following Json format:
+
+{
+    "identity": "Gary Willoughby <snap@nomad.so>",
+    "database": {
+        "user": "foo",
+        "password": "bar",
+        "protocol": "tcp",
+        "host": "localhost",
+        "port": "3306"
+    }
+}
+
+The database protocol, host and port fields are optional and default to the values shown above.
+`
 
 // This struct holds the database configuration details.
 type database struct {
@@ -58,39 +73,30 @@ func getConfigFilePath() (string) {
 
 // Read the config file.
 func readConfigFile(path string) ([]byte) {
-	
 	file, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Fatal(`The snap config file is missing: (~/.snap). This file should be in the following Json format:
-
-{
-    "identity": "Gary Willoughby <snap@nomad.so>",
-    "database": {
-        "user": "foo",
-        "password": "bar",
-        "protocol": "tcp",
-        "host": "localhost",
-        "port": "3306"
-    }
-}
-
-The protocol, host and port fields are optional and default to the values shown above.
-`)
+		log.Fatalf("The config file is missing: (%s) %s\n", getConfigFilePath() ,jsonInfo)
 	}
 	return file
 }
 
 // Parse the config file into a Database struct.
+func parseConfigFile() ([]byte) {
+	path     := getConfigFilePath()
+	contents := readConfigFile(path)
+	return contents
+}
+
+// Return a valid config struct.
 func GetConfig() (Config) {
 	if config != nil {
 		return *config
 	} else {
-		path     := getConfigFilePath()
-		contents := readConfigFile(path)
-		config    = newConfig()
-		err := json.Unmarshal(contents, config)
+		jsonString := parseConfigFile()
+		config = newConfig()
+		err := json.Unmarshal(jsonString, config)
 		if err != nil {
-			log.Fatalln("Can not un-marshal json into config struct.")
+			log.Fatalln("The config file format is not valid.", jsonInfo)
 		}
 		return *config
 	}
