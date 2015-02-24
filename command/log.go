@@ -2,7 +2,10 @@
 package command
 
 // Imports.
+import "fmt"
 import "github.com/codegangsta/cli"
+import "github.com/nomad-software/snap/action"
+import "log"
 
 // Command.
 var Log = cli.Command{
@@ -21,6 +24,12 @@ EXAMPLE:
 `,
 
 	Action: func(ctx *cli.Context) {
-		println("Args:", ctx.Args().First())
+		if len(ctx.Args()) > 0 {
+			name := ctx.Args().First()
+			action.ShowLog(name)
+			return
+		}
+		log.Println("No database name specified")
+		log.Fatalln(fmt.Sprintf("Run '%s help log' for more information", ctx.App.Name))
 	},
 }

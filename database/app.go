@@ -3,36 +3,53 @@ package database
 
 // Imports.
 import "fmt"
+import "log"
+
+// Assert that a database is being managed. If not throw a fatal error.
+func assertDatabaseIsManaged(databaseName string) {
+
+	query := `SELECT id.name
+		FROM initialisedDatabases AS id
+		WHERE id.name = ?
+		LIMIT 1;`
+
+	row, err := QueryRow(query, databaseName)
+	ExitOnError(err, fmt.Sprintf("Error occurred asserting database '%s' is being managed."))
+
+	if len(row) == 0 {
+		log.Fatalf("Database '%s' is not currently being managed.", databaseName)
+	}
+}
 
 // Add a database to be managed.
-func InitialiseDatabase(name string) {
+func InitialiseDatabase(databaseName string) {
 
-	fullSql := DumpDatabase(name)
+	fullSql := DumpDatabase(databaseName)
 
 	UseConfigDatabase()
 	StartTransaction()
 
-		insertId, err := InsertRow("INSERT INTO initialisedDatabases (name) VALUES (?)", name)
-		ExitOnError(err, fmt.Sprintf("Database '%s' is already being managed.", name))
+		insertId, err := InsertRow("INSERT INTO initialisedDatabases (name) VALUES (?)", databaseName)
+		ExitOnError(err, fmt.Sprintf("Database '%s' is already being managed.", databaseName))
 
 		query := `INSERT INTO revisions
-			(databaseId, revision, upSql, downSql, fullSql, comment)
-			VALUES (?, 1, NULL, NULL, ?, "Database initialised.");`
+			(databaseId, revision, upSql, downSql, fullSql, comment, author)
+			VALUES (?, 1, NULL, NULL, ?, "Database initialised.", "Snap");`
 
 		_, err = InsertRow(query, insertId, fullSql)
-		ExitOnError(err, fmt.Sprintf("Database '%s' is already being managed.", name))
+		ExitOnError(err, fmt.Sprintf("Database '%s' is already being managed.", databaseName))
 
 	Commit()
 }
 
-// Type returned by ListManagedDatabases function.
+// An initialised database type.
 type database struct {
 	Name string
 	Revision string
 	Date string
 }
 
-// A collection of databases.
+// A collection of initialised databases.
 type databaseList []database
 
 // Return a tabbed output string for writing using a tabbed writer.
@@ -42,6 +59,8 @@ func (this database) TabbedString() (string) {
 
 // Get the length of the longest database name.
 func (this databaseList) LengthOfLongestName() (maxLength int) {
+	// Set the default to the same as the length of this column's heading i.e. 'Database'.
+	maxLength = 8
 	for _, entry := range this {
 		if len(entry.Name) > maxLength {
 			maxLength = len(entry.Name)
@@ -69,6 +88,43 @@ func GetManagedDatabaseList() (list databaseList) {
 	list = make([]database, 0)
 	for _, row := range rows {
 		list = append(list, database{row.Str(0), row.Str(1), row.Str(2)})
+	}
+	return;
+}
+
+// A log entry type.
+type logEntry struct {
+	Revision string
+	Comment string
+	Author string
+	Date string
+}
+
+// A collection of log entries.
+type logEntries []logEntry
+
+// Get log entries for the passed database.
+func GetLogEntries(databaseName string) (log logEntries) {
+
+	assertDatabaseIsManaged(databaseName)
+	UseConfigDatabase()
+
+	query := `SELECT
+		r.revision,
+		r.comment,
+		r.author,
+		r.dateApplied
+		FROM initialisedDatabases AS id
+		INNER JOIN revisions AS r ON r.databaseId = id.id
+		WHERE id.name = ?
+		ORDER BY r.revision DESC;`
+
+	rows, err := Query(query, databaseName)
+	ExitOnError(err, fmt.Sprintf("Can not retrieve log entries for database '%s'.\n", databaseName))
+
+	log = make([]logEntry, 0)
+	for _, row := range rows {
+		log = append(log, logEntry{row.Str(0), row.Str(1), row.Str(2), row.Str(3)})
 	}
 	return;
 }

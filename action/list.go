@@ -4,11 +4,12 @@ package action
 // Imports.
 import "fmt"
 import "github.com/nomad-software/snap/database"
+import "log"
 import "os"
 import "strings"
 import "text/tabwriter"
 
-// List all databases managed by snap.
+// List all managed databases.
 func ListManagedDatabases() {
 
 	database.AssertConfigDatabaseExists()
@@ -28,5 +29,7 @@ func ListManagedDatabases() {
 			fmt.Fprintln(writer, entry.TabbedString())
 		}
 		writer.Flush()
+	} else {
+		log.Println("No databases are currently being managed.")
 	}
 }

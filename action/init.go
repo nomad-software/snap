@@ -6,12 +6,12 @@ import "fmt"
 import "log"
 import "github.com/nomad-software/snap/database"
 
-// Initialise a datbase to be managed by snap.
-func InitialiseDatabase(name string) {
+// Initialise a datbase to be managed.
+func InitialiseDatabase(databaseName string) {
 
 	database.AssertConfigDatabaseExists()
-	database.AssertDatabaseExists(name)
+	database.AssertDatabaseExists(databaseName)
 
-	log.Println(fmt.Sprintf("Initialising '%s' database for snap managment", name))
-	database.InitialiseDatabase(name)
+	log.Println(fmt.Sprintf("Initialising '%s' database for managment", databaseName))
+	database.InitialiseDatabase(databaseName)
 }

@@ -184,7 +184,7 @@ func useDatabase(name string) (error) {
 	return err
 }
 
-// Asser the database can be used. If not throw a fatal error.
+// Assert the database can be used. If not throw a fatal error.
 func AssertUseDatabase(name string) {
 	err := useDatabase(name)
 	ExitOnError(err, fmt.Sprintf("Can not use '%s' database.", name))

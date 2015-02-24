@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS snap_config.revisions (
   downSql TEXT NULL DEFAULT NULL,
   fullSql TEXT NOT NULL COMMENT 'SQL snapshot after applying update SQL.',
   comment VARCHAR(255) NOT NULL,
+  author VARCHAR(255) NOT NULL,
   dateApplied TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   INDEX databaseIdForeignKey (databaseId ASC),
