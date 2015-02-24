@@ -39,8 +39,7 @@ func main() {
 		cli.ShowAppHelp(ctx)
 	}
 
-	config := config.ParseConfigFile()
-	database.Open(config)
+	database.Open(config.GetConfig())
 	defer database.Close()
 
 	app.Run(os.Args)

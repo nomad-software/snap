@@ -8,7 +8,7 @@ import "github.com/ziutek/mymysql/mysql"
 import "log"
 import _ "github.com/ziutek/mymysql/native"
 
-// Global database struct.
+// Package database struct.
 var db mysql.Conn
 var tx mysql.Transaction
 
@@ -33,8 +33,14 @@ func ExitOnError(err error, messages ...interface{}) {
 }
 
 // Establishes a connection to the database.
-func Open(config config.Database) {
-	_db := mysql.New(config.Protocol, "", config.Host + ":" + config.Port, config.User, config.Password, "")
+func Open(config config.Config) {
+	protocol      := config.Database.Protocol
+	localAddress  := ""
+	remoteAddress := config.Database.Host + ":" + config.Database.Port
+	user          := config.Database.User
+	password      := config.Database.Password
+	database      := ""
+	_db := mysql.New(protocol, localAddress, remoteAddress, user, password, database)
 	err := _db.Connect()
 	ExitOnError(err, "Database connection could not be established.")
 	db = _db
