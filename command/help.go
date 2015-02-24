@@ -39,6 +39,7 @@ func init() {
 |___/_| |_|\__,_| .__/
                 |_|
 {{.Usage}}
+by {{.Author}} <{{.Email}}>
 
 USAGE:
 {{.Name}} command <arguments...> [optional]

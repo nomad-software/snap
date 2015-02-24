@@ -3,6 +3,7 @@ package command
 
 // Imports.
 import "github.com/codegangsta/cli"
+import "github.com/nomad-software/snap/action"
 
 // Command.
 var List = cli.Command{
@@ -18,6 +19,6 @@ EXAMPLE:
 `,
 
 	Action: func(ctx *cli.Context) {
-		println("Args:", ctx.Args().First())
+		action.ListManagedDatabases()
 	},
 }

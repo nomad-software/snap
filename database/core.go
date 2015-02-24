@@ -152,13 +152,15 @@ func StartTransaction() {
 
 // Commit a transaction.
 func Commit() {
-	err := tx.Commit()
-	ExitOnError(err, "Error occurred committing transaction.")
+	if tx != nil && tx.IsValid() {
+		err := tx.Commit()
+		ExitOnError(err, "Error occurred committing transaction.")
+	}
 }
 
 // Rollback a transaction.
 func Rollback() {
-	if tx.IsValid() {
+	if tx != nil && tx.IsValid() {
 		err := tx.Rollback()
 		ExitOnError(err, "Error occurred rolling back transaction.")
 	}
