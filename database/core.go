@@ -199,7 +199,7 @@ func DatabaseExists(name string) (bool) {
 // Assert the a database exists. If not throw a fatal error.
 func AssertDatabaseExists(name string) {
 	if !DatabaseExists(name) {
-		log.Fatalln(fmt.Sprintf("Database '%s' does not exist.", name))
+		log.Fatalf("Database '%s' does not exist.\n", name)
 	}
 }
 

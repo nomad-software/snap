@@ -2,6 +2,7 @@
 package command
 
 // Imports.
+import "fmt"
 import "github.com/codegangsta/cli"
 
 // Command.
@@ -17,6 +18,6 @@ EXAMPLE:
 `,
 
 	Action: func(ctx *cli.Context) {
-		println(ctx.App.Name, ctx.App.Version)
+		fmt.Println(ctx.App.Name, ctx.App.Version)
 	},
 }

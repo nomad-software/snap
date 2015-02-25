@@ -3,6 +3,9 @@ package command
 
 // Imports.
 import "github.com/codegangsta/cli"
+import "github.com/nomad-software/snap/action"
+import "log"
+import "strconv"
 
 // Command.
 var Show = cli.Command{
@@ -26,6 +29,21 @@ EXAMPLE:
 `,
 
 	Action: func(ctx *cli.Context) {
-		println("Args:", ctx.Args().First())
+
+		args := ctx.Args()
+
+		if len(args) > 0 {
+			database := args.Get(0)
+			// Ignore the error when getting the second argument because if the 
+			// argument can not be parsed to a uint then (along with the error) 
+			// zero is returned, which is what we want because we can use it as 
+			// an empty value.
+			revision, _ := strconv.ParseUint(args.Get(1), 10, 64)
+			action.ShowUpdateSql(database, revision)
+			return
+		}
+
+		log.Println("No database name specified")
+		log.Fatalf("Run '%s help show' for more information\n", ctx.App.Name)
 	},
 }

@@ -10,6 +10,7 @@ import "log"
 func ShowLog(databaseName string) {
 
 	database.AssertConfigDatabaseExists()
+	database.AssertDatabaseExists(databaseName)
 
 	logEntries := database.GetLogEntries(databaseName)
 

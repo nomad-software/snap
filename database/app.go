@@ -8,6 +8,8 @@ import "log"
 // Assert that a database is being managed. If not throw a fatal error.
 func assertDatabaseIsManaged(databaseName string) {
 
+	UseConfigDatabase()
+
 	query := `SELECT id.name
 		FROM initialisedDatabases AS id
 		WHERE id.name = ?
@@ -17,7 +19,7 @@ func assertDatabaseIsManaged(databaseName string) {
 	ExitOnError(err, fmt.Sprintf("Error occurred asserting database '%s' is being managed."))
 
 	if len(row) == 0 {
-		log.Fatalf("Database '%s' is not currently being managed.", databaseName)
+		log.Fatalf("Database '%s' is not currently being managed.\n", databaseName)
 	}
 }
 
@@ -127,4 +129,47 @@ func GetLogEntries(databaseName string) (log logEntries) {
 		log = append(log, logEntry{row.Str(0), row.Str(1), row.Str(2), row.Str(3)})
 	}
 	return;
+}
+
+// Get the current revision of the passed database.
+func GetCurrentRevision(databaseName string) (uint64) {
+
+	assertDatabaseIsManaged(databaseName)
+	UseConfigDatabase()
+
+	query := `SELECT
+		MAX(r.revision)
+		FROM initialisedDatabases AS id
+		INNER JOIN revisions AS r ON r.databaseId = id.id
+		WHERE id.name = ?
+		GROUP BY r.databaseId
+		LIMIT 1;`
+
+	row, err := QueryRow(query, databaseName)
+	ExitOnError(err, fmt.Sprintf("Can not retrieve current revision for database '%s'.\n", databaseName))
+
+	return row.Uint64(0)
+}
+
+// Return the update SQL for the database and revision passed.
+func GetUpdateSql(databaseName string, revision uint64) (upSql string) {
+
+	assertDatabaseIsManaged(databaseName)
+	UseConfigDatabase()
+
+	query := `SELECT
+		COALESCE(r.upSql, r.fullSql)
+		FROM initialisedDatabases AS id
+		INNER JOIN revisions AS r ON r.databaseId = id.id
+		WHERE id.name = ?
+		AND r.revision = ?
+		LIMIT 1;`
+
+	row, err := QueryRow(query, databaseName, revision)
+	ExitOnError(err, fmt.Sprintf("Can not retrieve update SQL for database '%s' at revision '%d'.\n", databaseName, revision))
+
+	if len(row) > 0 {
+		upSql = row.Str(0)
+	}
+	return
 }
