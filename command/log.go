@@ -27,8 +27,7 @@ EXAMPLE:
 		args := ctx.Args()
 
 		if len(args) > 0 {
-			name := args.First()
-			action.ShowLog(name)
+			action.ShowLog(args.First())
 			return
 		}
 

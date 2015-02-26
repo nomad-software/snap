@@ -35,9 +35,9 @@ EXAMPLE:
 		if len(args) > 0 {
 			database := args.Get(0)
 			// Ignore the error when getting the second argument because if the 
-			// argument can not be parsed to a uint then (along with the error) 
-			// zero is returned, which is what we want because we can use it as 
-			// an empty value.
+			// argument can not be parsed to a uint64 then (along with the 
+			// error) zero is returned, which is what we want because we can 
+			// use it as an empty value.
 			revision, _ := strconv.ParseUint(args.Get(1), 10, 64)
 			action.ShowUpdateSql(database, revision)
 			return

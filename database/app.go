@@ -151,7 +151,9 @@ func GetCurrentRevision(databaseName string) (uint64) {
 	return row.Uint64(0)
 }
 
-// Return the update SQL for the database and revision passed.
+// Return the update SQL for the database and revision passed. This function 
+// defaults to the full SQL if the update SQL doesn't exist. This is because 
+// when initialising a database (revision 1) only the full SQL is available.
 func GetUpdateSql(databaseName string, revision uint64) (upSql string) {
 
 	assertDatabaseIsManaged(databaseName)
@@ -170,6 +172,29 @@ func GetUpdateSql(databaseName string, revision uint64) (upSql string) {
 
 	if len(row) > 0 {
 		upSql = row.Str(0)
+	}
+	return
+}
+
+// Return the full SQL for the database and revision passed.
+func GetFullSql(databaseName string, revision uint64) (fullSql string) {
+
+	assertDatabaseIsManaged(databaseName)
+	UseConfigDatabase()
+
+	query := `SELECT
+		r.fullSql
+		FROM initialisedDatabases AS id
+		INNER JOIN revisions AS r ON r.databaseId = id.id
+		WHERE id.name = ?
+		AND r.revision = ?
+		LIMIT 1;`
+
+	row, err := QueryRow(query, databaseName, revision)
+	ExitOnError(err, fmt.Sprintf("Can not retrieve SQL for database '%s' at revision '%d'.\n", databaseName, revision))
+
+	if len(row) > 0 {
+		fullSql = row.Str(0)
 	}
 	return
 }
