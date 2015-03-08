@@ -3,22 +3,24 @@ package database
 
 // Imports.
 import "fmt"
+import "github.com/nomad-software/snap/config"
 import "log"
 
-// Assert that a database is being managed. If not throw a fatal error.
-func assertDatabaseIsManaged(databaseName string) {
-
+// Check that a database is being managed.
+func databaseIsManaged(databaseName string) (bool) {
 	UseConfigDatabase()
-
 	query := `SELECT id.name
 		FROM initialisedDatabases AS id
 		WHERE id.name = ?
 		LIMIT 1;`
-
 	row, err := QueryRow(query, databaseName)
-	ExitOnError(err, fmt.Sprintf("Error occurred asserting database '%s' is being managed."))
+	exitOnError(err, fmt.Sprintf("Error occurred checking database '%s' is being managed.", databaseName))
+	return len(row) != 0
+}
 
-	if len(row) == 0 {
+// Assert that a database is being managed. If not throw a fatal error.
+func assertDatabaseIsManaged(databaseName string) {
+	if !databaseIsManaged(databaseName) {
 		log.Fatalf("Database '%s' is not currently being managed.\n", databaseName)
 	}
 }
@@ -26,20 +28,20 @@ func assertDatabaseIsManaged(databaseName string) {
 // Add a database to be managed.
 func InitialiseDatabase(databaseName string) {
 
-	fullSql := DumpDatabase(databaseName)
+	fullSql := GenerateFullSql(databaseName)
 
 	UseConfigDatabase()
 	StartTransaction()
 
 		insertId, err := InsertRow("INSERT INTO initialisedDatabases (name) VALUES (?)", databaseName)
-		ExitOnError(err, fmt.Sprintf("Database '%s' is already being managed.", databaseName))
+		exitOnError(err, fmt.Sprintf("Database '%s' is already being managed.", databaseName))
 
 		query := `INSERT INTO revisions
 			(databaseId, revision, upSql, downSql, fullSql, comment, author)
-			VALUES (?, 1, NULL, NULL, ?, "Database initialised.", "Snap");`
+			VALUES (?, 1, NULL, NULL, ?, "Database initialised.", ?);`
 
-		_, err = InsertRow(query, insertId, fullSql)
-		ExitOnError(err, fmt.Sprintf("Database '%s' is already being managed.", databaseName))
+		_, err = InsertRow(query, insertId, fullSql, config.GetConfig().Identity)
+		exitOnError(err, fmt.Sprintf("Database '%s' is already being managed.", databaseName))
 
 	Commit()
 }
@@ -85,7 +87,7 @@ func GetManagedDatabaseList() (list databaseList) {
 		ORDER BY id.dateInitialised ASC;`
 
 	rows, err := Query(query)
-	ExitOnError(err, "Can not retrieve list of managed databases.")
+	exitOnError(err, "Can not retrieve list of managed databases.")
 
 	list = make([]database, 0)
 	for _, row := range rows {
@@ -122,7 +124,7 @@ func GetLogEntries(databaseName string) (log logEntries) {
 		ORDER BY r.revision DESC;`
 
 	rows, err := Query(query, databaseName)
-	ExitOnError(err, fmt.Sprintf("Can not retrieve log entries for database '%s'.\n", databaseName))
+	exitOnError(err, fmt.Sprintf("Can not retrieve log entries for database '%s'.\n", databaseName))
 
 	log = make([]logEntry, 0)
 	for _, row := range rows {
@@ -146,7 +148,7 @@ func GetCurrentRevision(databaseName string) (uint64) {
 		LIMIT 1;`
 
 	row, err := QueryRow(query, databaseName)
-	ExitOnError(err, fmt.Sprintf("Can not retrieve current revision for database '%s'.\n", databaseName))
+	exitOnError(err, fmt.Sprintf("Can not retrieve current revision for database '%s'.\n", databaseName))
 
 	return row.Uint64(0)
 }
@@ -168,7 +170,7 @@ func GetUpdateSql(databaseName string, revision uint64) (upSql string) {
 		LIMIT 1;`
 
 	row, err := QueryRow(query, databaseName, revision)
-	ExitOnError(err, fmt.Sprintf("Can not retrieve update SQL for database '%s' at revision '%d'.\n", databaseName, revision))
+	exitOnError(err, fmt.Sprintf("Can not retrieve update SQL for database '%s' at revision '%d'.\n", databaseName, revision))
 
 	if len(row) > 0 {
 		upSql = row.Str(0)
@@ -191,10 +193,33 @@ func GetFullSql(databaseName string, revision uint64) (fullSql string) {
 		LIMIT 1;`
 
 	row, err := QueryRow(query, databaseName, revision)
-	ExitOnError(err, fmt.Sprintf("Can not retrieve SQL for database '%s' at revision '%d'.\n", databaseName, revision))
+	exitOnError(err, fmt.Sprintf("Can not retrieve full SQL for database '%s' at revision '%d'.\n", databaseName, revision))
 
 	if len(row) > 0 {
 		fullSql = row.Str(0)
 	}
 	return
+}
+
+// Copy a full database to a destination at a particular revision.
+func CopyDatabase(sourceDatabaseName string, destinationDatabaseName string, revision uint64) {
+
+	charSet, collation := GetDatabaseEncoding(sourceDatabaseName)
+	SetConnectionEncoding(charSet, collation)
+
+	log.Printf("Creating database '%s' with charset '%s' and collation '%s'.", destinationDatabaseName, charSet, collation)
+
+	err := createDatabase(destinationDatabaseName, charSet, collation)
+	exitOnError(err, fmt.Sprintf("Can not create new database '%s'.\n", destinationDatabaseName))
+
+	fullSql := GetFullSql(sourceDatabaseName, revision)
+	fullSql  = sanitise(fullSql)
+
+	AssertUseDatabase(destinationDatabaseName)
+	log.Printf("Copying schema from '%s' to '%s'.", sourceDatabaseName, destinationDatabaseName)
+
+	err = ExecMulti(fullSql)
+	exitOnError(err, fmt.Sprintf("Can not copy schema to new database '%s'.\n", destinationDatabaseName))
+
+	log.Println("Success.")
 }

@@ -73,6 +73,6 @@ SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 `
 	err := ExecMulti(sql)
-	ExitOnError(err, "Snap config database creation failed.")
+	exitOnError(err, "Snap config database creation failed.")
 	log.Println("Snap config database created successfully.")
 }

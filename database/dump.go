@@ -5,8 +5,8 @@ package database
 import "fmt"
 import "strings"
 
-// Dump the entire schema of a database in SQL format to a string.
-func DumpDatabase(databaseName string) (string) {
+// Dump the entire contents (no data) of a database in SQL format to a string.
+func GenerateFullSql(databaseName string) (string) {
 	AssertUseDatabase(databaseName)
 	output := []string{
 		exportDatabase(databaseName),
@@ -23,6 +23,24 @@ func DumpDatabase(databaseName string) (string) {
 		}
 	}
 	return strings.Join(sqlFragments, "\n\n");
+}
+
+// Get database encoding from the passed database.
+func GetDatabaseEncoding(databaseName string) (charSet string, collation string) {
+	AssertUseDatabase(databaseName)
+	query :=`SELECT
+		DEFAULT_CHARACTER_SET_NAME,
+		DEFAULT_COLLATION_NAME
+		FROM information_schema.SCHEMATA
+		WHERE SCHEMA_NAME = ?
+		LIMIT 1;`
+	row, err := QueryRow(query, databaseName)
+	exitOnError(err, fmt.Sprintf("Can not access encoding information for database '%s'.", databaseName))
+	if len(row) > 0 {
+		charSet   = row.Str(0)
+		collation = row.Str(1)
+	}
+	return
 }
 
 // Generate a comment to separate the sections.
@@ -53,17 +71,10 @@ func wrapFragmentsWithSafeDelimiters(sqlFragments []string) ([]string) {
 // Export the database SQL. This function assumes the database exists and is 
 // being used.
 func exportDatabase(databaseName string) string {
-	query :=`SELECT
-		DEFAULT_CHARACTER_SET_NAME,
-		DEFAULT_COLLATION_NAME
-		FROM information_schema.SCHEMATA
-		WHERE SCHEMA_NAME = ?
-		LIMIT 1;`
-	row, err := QueryRow(query, databaseName)
-	ExitOnError(err, fmt.Sprintf("Can not access schema information for database '%s'.", databaseName))
+	charSet, collation := GetDatabaseEncoding(databaseName)
 	sqlFragments := make([]string, 0)
-	sqlFragments = append(sqlFragments, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET %s COLLATE %s;", databaseName, row.Str(0), row.Str(1)))
-	sqlFragments = append(sqlFragments, fmt.Sprintf("USE DATABASE `%s`;", databaseName))
+	sqlFragments = append(sqlFragments, fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET %s COLLATE %s;", databaseName, charSet, collation))
+	sqlFragments = append(sqlFragments, fmt.Sprintf("USE `%s`;", databaseName))
 	sqlFragments = prependHeaderFragment("Database", sqlFragments)
 	return strings.Join(sqlFragments, "\n\n");
 }
@@ -84,7 +95,7 @@ func exportTables(databaseName string) (string) {
 // the database exists and is being used.
 func getAllTableNames(databaseName string) ([]string) {
 	rows, err := Query("SHOW TABLES;")
-	ExitOnError(err, fmt.Sprintf("Can not access table information for database '%s'.", databaseName))
+	exitOnError(err, fmt.Sprintf("Can not access table information for database '%s'.", databaseName))
 	var tables = make([]string, 0)
 	for _, row := range rows {
 		tables = append(tables, row.Str(0))
@@ -95,7 +106,7 @@ func getAllTableNames(databaseName string) ([]string) {
 // Export the SQL for one table. This function assumes the table exists.
 func exportTable(tableName string) (string) {
 	row, err := QueryRowUnsafe("SHOW CREATE TABLE `%s`;", tableName)
-	ExitOnError(err, fmt.Sprintf("Can not read creation information for table '%s'.", tableName))
+	exitOnError(err, fmt.Sprintf("Can not read creation information for table '%s'.", tableName))
 	// The ending semi-colon is always missing when retrieving an SQL fragment 
 	// like this.
 	return row.Str(1) + ";"
@@ -118,7 +129,7 @@ func exportFunctions(databaseName string) (string) {
 // assumes the database exists and is being used.
 func getAllFunctionNames(databaseName string) ([]string) {
 	rows, err := Query("SHOW FUNCTION STATUS WHERE Db = ?;", databaseName)
-	ExitOnError(err, fmt.Sprintf("Can not access function information for database '%s'.", databaseName))
+	exitOnError(err, fmt.Sprintf("Can not access function information for database '%s'.", databaseName))
 	var functions = make([]string, 0)
 	for _, row := range rows {
 		functions = append(functions, row.Str(1))
@@ -129,7 +140,7 @@ func getAllFunctionNames(databaseName string) ([]string) {
 // Export the SQL for one function. This function assumes the function exists.
 func exportFunction(functionName string) (string) {
 	row, err := QueryRowUnsafe("SHOW CREATE FUNCTION `%s`;", functionName)
-	ExitOnError(err, fmt.Sprintf("Can not read creation information for function '%s'.", functionName))
+	exitOnError(err, fmt.Sprintf("Can not read creation information for function '%s'.", functionName))
 	// The ending safe delimiter is always missing when retrieving an SQL 
 	// fragment like this.
 	return row.Str(2) + "$$"
@@ -152,7 +163,7 @@ func exportProcedures(databaseName string) (string) {
 // assumes the database exists and is being used.
 func getAllProcedureNames(databaseName string) ([]string) {
 	rows, err := Query("SHOW PROCEDURE STATUS WHERE Db = ?;", databaseName)
-	ExitOnError(err, fmt.Sprintf("Can not access procedure information for database '%s'.", databaseName))
+	exitOnError(err, fmt.Sprintf("Can not access procedure information for database '%s'.", databaseName))
 	var procedures = make([]string, 0)
 	for _, row := range rows {
 		procedures = append(procedures, row.Str(1))
@@ -164,7 +175,7 @@ func getAllProcedureNames(databaseName string) ([]string) {
 // exists.
 func exportProcedure(procedureName string) (string) {
 	row, err := QueryRowUnsafe("SHOW CREATE PROCEDURE `%s`;", procedureName)
-	ExitOnError(err, fmt.Sprintf("Can not read creation information for procedure '%s'.", procedureName))
+	exitOnError(err, fmt.Sprintf("Can not read creation information for procedure '%s'.", procedureName))
 	// The ending safe delimiter is always missing when retrieving an SQL 
 	// fragment like this.
 	return row.Str(2) + "$$"
@@ -187,7 +198,7 @@ func exportTriggers(databaseName string) (string) {
 // assumes the database exists and is being used.
 func getAllTriggerNames(databaseName string) ([]string) {
 	rows, err := QueryUnsafe("SHOW TRIGGERS FROM `%s`;", databaseName)
-	ExitOnError(err, fmt.Sprintf("Can not access trigger information for database '%s'.", databaseName))
+	exitOnError(err, fmt.Sprintf("Can not access trigger information for database '%s'.", databaseName))
 	var triggers = make([]string, 0)
 	for _, row := range rows {
 		triggers = append(triggers, row.Str(0))
@@ -198,7 +209,7 @@ func getAllTriggerNames(databaseName string) ([]string) {
 // Export the SQL for one trigger. This function assumes the trigger exists.
 func exportTrigger(triggerName string) (string) {
 	row, err := QueryRowUnsafe("SHOW CREATE TRIGGER `%s`;", triggerName)
-	ExitOnError(err, fmt.Sprintf("Can not read creation information for trigger '%s'.", triggerName))
+	exitOnError(err, fmt.Sprintf("Can not read creation information for trigger '%s'.", triggerName))
 	// The ending safe delimiter is always missing when retrieving an SQL 
 	// fragment like this.
 	return row.Str(2) + "$$"

@@ -24,6 +24,6 @@ func ShowLog(databaseName string) {
 			fmt.Println("")
 		}
 	} else {
-		log.Println(fmt.Sprintf("No log entries found for database '%s'.", databaseName))
+		log.Printf("No log entries found for database '%s'.\n", databaseName)
 	}
 }

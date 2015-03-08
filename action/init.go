@@ -2,7 +2,6 @@
 package action
 
 // Imports.
-import "fmt"
 import "log"
 import "github.com/nomad-software/snap/database"
 
@@ -12,6 +11,6 @@ func InitialiseDatabase(databaseName string) {
 	database.AssertConfigDatabaseExists()
 	database.AssertDatabaseExists(databaseName)
 
-	log.Println(fmt.Sprintf("Initialising '%s' database for managment", databaseName))
+	log.Printf("Initialising '%s' database for managment\n", databaseName)
 	database.InitialiseDatabase(databaseName)
 }

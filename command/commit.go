@@ -26,32 +26,28 @@ ARGUMENTS:
 
 SNAPFILE:
 A snap file is a simple text file holding SQL statements to be applied to the 
-database. Two textual delimeters are required in the file. The first (marked 
-using UP:) is used to mark the start of SQL making changes to the database 
-schema. The second (marked using DOWN:) is used to mark the start of SQL 
-reversing the changes made in the first section. Here is a sample file:
+database. Two SQL comments are required in the file to act as delimiters. The 
+first, marked '-- SNAP_UP', is used to mark the start of SQL making any 
+required changes to the database schema. The second, marked '-- SNAP_DOWN', is 
+used to mark the start of SQL reversing the changes made in the first section. 
+Both comments must be on their own line. Here is a sample file:
 
-    UP:
+    -- SNAP_UP
     CREATE TABLE IF NOT EXISTS foo (
       bar TINYINT UNSIGNED NOT NULL,
       baz VARCHAR(32) NOT NULL,
-      PRIMARY KEY (id) )
+      PRIMARY KEY (bar) )
     ENGINE = InnoDB;
 
-    DOWN:
+    -- SNAP_DOWN
     DROP TABLE IF EXISTS foo;
 
-Once the commit is successful the snap file can be discarded as it is saved to 
+Once a commit is successful the snap file can be discarded as it is saved to 
 the snap configuration database.
 
 EXAMPLE:
 
     snap my_database changes.txt "Added table foo."
-
-WARNING:
-It is the developer's responsibility to ensure the SQL in the DOWN 
-section correctly reverses the changes made in the UP section. Failing to 
-ensure this could corrupt the database.
 	`,
 
 	Action: func(ctx *cli.Context) {

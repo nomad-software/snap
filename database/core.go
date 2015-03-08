@@ -14,9 +14,8 @@ var tx mysql.Transaction
 
 // Check if an error occurred. If it did print the error message and return 
 // false. Return true if there was no error.
-func WasSuccessful(err error) (bool) {
+func wasSuccessful(err error) (bool) {
 	if err != nil {
-		log.Println(err)
 		return false
 	}
 	return true
@@ -24,7 +23,7 @@ func WasSuccessful(err error) (bool) {
 
 // Handle a fatal error that will halt program execution. Rollback any 
 // transaction that is pending.
-func ExitOnError(err error, messages ...interface{}) {
+func exitOnError(err error, messages ...interface{}) {
 	if err != nil {
 		Rollback()
 		log.Println(err)
@@ -42,7 +41,7 @@ func Open(config config.Config) {
 	database      := ""
 	_db := mysql.New(protocol, localAddress, remoteAddress, user, password, database)
 	err := _db.Connect()
-	ExitOnError(err, "Database connection could not be established.")
+	exitOnError(err, "Database connection could not be established.")
 	db = _db
 }
 
@@ -134,6 +133,26 @@ func QueryRowUnsafe(sql string, params ...interface{}) (row mysql.Row, err error
 	return
 }
 
+// Set the connection encoding.
+func SetConnectionEncoding(charSet string, collation string) {
+	charSetQueries := []string{
+		"SET character_set_client = ?",
+		"SET character_set_results = ?",
+		"SET character_set_connection = ?",
+	}
+	collationQueries := []string{
+		"SET collation_connection = ?",
+	}
+	for _, query := range charSetQueries {
+		err := Exec(query, charSet)
+		exitOnError(err, "Error occurred setting connection character set.")
+	}
+	for _, query := range collationQueries {
+		err := Exec(query, collation)
+		exitOnError(err, "Error occurred setting connection collation.")
+	}
+}
+
 // Execute a prepared statement to insert a single row. The insert id is 
 // returned.
 func InsertRow(sql string, params ...interface{}) (insertId uint64, err error) {
@@ -152,7 +171,7 @@ func InsertRow(sql string, params ...interface{}) (insertId uint64, err error) {
 // Start a transaction.
 func StartTransaction() {
 	_tx, err := db.Begin()
-	ExitOnError(err, "Error occurred starting transaction.")
+	exitOnError(err, "Error occurred starting transaction.")
 	tx = _tx
 }
 
@@ -160,7 +179,7 @@ func StartTransaction() {
 func Commit() {
 	if tx != nil && tx.IsValid() {
 		err := tx.Commit()
-		ExitOnError(err, "Error occurred committing transaction.")
+		exitOnError(err, "Error occurred committing transaction.")
 	}
 }
 
@@ -168,13 +187,19 @@ func Commit() {
 func Rollback() {
 	if tx != nil && tx.IsValid() {
 		err := tx.Rollback()
-		ExitOnError(err, "Error occurred rolling back transaction.")
+		exitOnError(err, "Error occurred rolling back transaction.")
 	}
 }
 
 // Create a database.
-func CreateDatabase(name string) (error) {
-	err := ExecUnsafe("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;", name)
+func createDatabase(name string, charSet string, collation string) (error) {
+	err := ExecUnsafe("CREATE DATABASE IF NOT EXISTS `%s` DEFAULT CHARACTER SET %s COLLATE %s;", name, charSet, collation)
+	return err
+}
+
+// Drop a database.
+func dropDatabase(name string) (error) {
+	err := ExecUnsafe("DROP DATABASE IF EXISTS `%s`;", name)
 	return err
 }
 
@@ -187,13 +212,13 @@ func useDatabase(name string) (error) {
 // Assert the database can be used. If not throw a fatal error.
 func AssertUseDatabase(name string) {
 	err := useDatabase(name)
-	ExitOnError(err, fmt.Sprintf("Can not use '%s' database.", name))
+	exitOnError(err, fmt.Sprintf("Can not use '%s' database.", name))
 }
 
 // Check if a database exists.
 func DatabaseExists(name string) (bool) {
 	err := useDatabase(name)
-	return WasSuccessful(err)
+	return wasSuccessful(err)
 }
 
 // Assert the a database exists. If not throw a fatal error.
@@ -201,10 +226,4 @@ func AssertDatabaseExists(name string) {
 	if !DatabaseExists(name) {
 		log.Fatalf("Database '%s' does not exist.\n", name)
 	}
-}
-
-// Drop a database.
-func DropDatabase(name string) (error) {
-	err := ExecUnsafe("DROP SCHEMA IF EXISTS `%s`;", name)
-	return err
 }
