@@ -5,9 +5,11 @@ package database
 import "fmt"
 import "strings"
 
-// Dump the entire contents (no data) of a database in SQL format to a string.
+// Generate the full schema of the named database (not including data) in SQL 
+// format as a string.  The format of the generated SQL is that which would be 
+// generated from the mysqldump tool.
 func GenerateFullSql(databaseName string) (string) {
-	AssertUseDatabase(databaseName)
+	assertUseDatabase(databaseName)
 	output := []string{
 		exportDatabase(databaseName),
 		exportTables(databaseName),
@@ -15,7 +17,7 @@ func GenerateFullSql(databaseName string) (string) {
 		exportProcedures(databaseName),
 		exportTriggers(databaseName),
 	}
-	// Filter out empty output.
+	// Filter out empty lines.
 	sqlFragments := make([]string, 0)
 	for _, sqlFragment := range output {
 		if sqlFragment != "" {
@@ -25,9 +27,9 @@ func GenerateFullSql(databaseName string) (string) {
 	return strings.Join(sqlFragments, "\n\n");
 }
 
-// Get database encoding from the passed database.
+// Get the character encoding and collation of the passed database.
 func GetDatabaseEncoding(databaseName string) (charSet string, collation string) {
-	AssertUseDatabase(databaseName)
+	assertUseDatabase(databaseName)
 	query :=`SELECT
 		DEFAULT_CHARACTER_SET_NAME,
 		DEFAULT_COLLATION_NAME

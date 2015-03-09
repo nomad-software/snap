@@ -5,14 +5,15 @@ package database
 import "regexp"
 import "strings"
 
-// Sanitises SQL for use by this program. The reason for sanitisation is to 
-// prevent SQL being executed by this program that would have un-desirable side 
-// effects. For example, when dealing with SQL updates many people use the 
-// command line. Such command line clients support features that this program 
-// does not. These features are removed from any SQL executed by this program.
+// This function sanitises SQL for use by this program. The reason for this is 
+// to prevent SQL being executed that would have un-desirable side effects or 
+// cause errors. For example, when dealing with SQL updates many people craft 
+// SQL for use on the command line. Such command line clients support SQL 
+// features that this program does not. These features are removed from any SQL 
+// executed by this program.
 //
-// All carriage returns are removed. All SQL lines containing the following 
-// statements are removed:
+// All carriage returns are removed from the passed SQL string to help parsing. 
+// All SQL lines containing the following statements are removed:
 //
 // 1. CREATE DATABASE
 // 2. CREATE SCHEMA
@@ -60,9 +61,10 @@ func removeUseStatements(sql string) (string) {
 }
 
 // Reverse any delimiter changes in the passed SQL. This removes all lines 
-// containing a DELIMITER statement and replaces all occurances of that custom 
-// delimiter to the default semi-colon.
+// containing a DELIMITER statement and substitutes all occurances of custom 
+// delimiters for the default semi-colon.
 func reverseDelimiterChanges(sql string) (string) {
+	// Match naked or quote delimited delimiters.
 	pattern := regexp.MustCompile("(?i)DELIMITER\\s+(?:[`'\"](.*)[`'\"]|(\\S+))")
 	lines   := strings.Split(sql, "\n")
 	output  := make([]string, 0)
@@ -71,8 +73,10 @@ func reverseDelimiterChanges(sql string) (string) {
 		if pattern.MatchString(line) {
 			matches := pattern.FindStringSubmatch(line)
 			if matches[1] != "" {
+				// This capture group contains matched quoted delimiters.
 				delimiter = matches[1]
 			} else {
+				// This capture group contains matched naked delimiters.
 				delimiter = matches[2]
 			}
 		} else {

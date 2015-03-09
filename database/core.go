@@ -12,15 +12,6 @@ import _ "github.com/ziutek/mymysql/native"
 var db mysql.Conn
 var tx mysql.Transaction
 
-// Check if an error occurred. If it did print the error message and return 
-// false. Return true if there was no error.
-func wasSuccessful(err error) (bool) {
-	if err != nil {
-		return false
-	}
-	return true
-}
-
 // Handle a fatal error that will halt program execution. Rollback any 
 // transaction that is pending.
 func exitOnError(err error, messages ...interface{}) {
@@ -210,20 +201,7 @@ func useDatabase(name string) (error) {
 }
 
 // Assert the database can be used. If not throw a fatal error.
-func AssertUseDatabase(name string) {
+func assertUseDatabase(name string) {
 	err := useDatabase(name)
 	exitOnError(err, fmt.Sprintf("Can not use '%s' database.", name))
-}
-
-// Check if a database exists.
-func DatabaseExists(name string) (bool) {
-	err := useDatabase(name)
-	return wasSuccessful(err)
-}
-
-// Assert the a database exists. If not throw a fatal error.
-func AssertDatabaseExists(name string) {
-	if !DatabaseExists(name) {
-		log.Fatalf("Database '%s' does not exist.\n", name)
-	}
 }

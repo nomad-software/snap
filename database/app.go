@@ -6,6 +6,19 @@ import "fmt"
 import "github.com/nomad-software/snap/config"
 import "log"
 
+// Check if a database exists.
+func DatabaseExists(name string) (bool) {
+	err := useDatabase(name)
+	return (err == nil)
+}
+
+// Assert the a database exists. If not throw a fatal error.
+func AssertDatabaseExists(name string) {
+	if !DatabaseExists(name) {
+		log.Fatalf("Database '%s' does not exist.\n", name)
+	}
+}
+
 // Check that a database is being managed.
 func databaseIsManaged(databaseName string) (bool) {
 	UseConfigDatabase()
@@ -61,9 +74,11 @@ func (this database) TabbedString() (string) {
 	return fmt.Sprintf("%s\t%s\t%s", this.Name, this.Revision, this.Date)
 }
 
-// Get the length of the longest database name.
+// Get the length of the longest database name. This is to aid formatting a 
+// command line ascii display.
 func (this databaseList) LengthOfLongestName() (maxLength int) {
-	// Set the default to the same as the length of this column's heading i.e. 'Database'.
+	// Set the default to the length of the ascii display's column heading i.e. 
+	// 'Database'.
 	maxLength = 8
 	for _, entry := range this {
 		if len(entry.Name) > maxLength {
@@ -215,7 +230,7 @@ func CopyDatabase(sourceDatabaseName string, destinationDatabaseName string, rev
 	fullSql := GetFullSql(sourceDatabaseName, revision)
 	fullSql  = sanitise(fullSql)
 
-	AssertUseDatabase(destinationDatabaseName)
+	assertUseDatabase(destinationDatabaseName)
 	log.Printf("Copying schema from '%s' to '%s'.", sourceDatabaseName, destinationDatabaseName)
 
 	err = ExecMulti(fullSql)
