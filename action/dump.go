@@ -22,6 +22,6 @@ func ShowFullSql(databaseName string, revision uint64) {
 		revision = currentRevision
 	}
 
-	sql := database.GetFullSql(databaseName, revision)
-	fmt.Println(sql)
+	fullSql := database.GetSchema(databaseName, revision)
+	fmt.Println(fullSql)
 }

@@ -48,7 +48,7 @@ EXAMPLE:
 			return
 		}
 
-		log.Println("Both source and destination databases must be specified")
-		log.Fatalf("Run '%s help copy' for more information\n", ctx.App.Name)
+		log.Println("Both source and destination databases must be specified.")
+		log.Fatalf("Run '%s help copy' for more information.\n", ctx.App.Name)
 	},
 }

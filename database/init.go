@@ -13,7 +13,7 @@ func AssertConfigDatabaseExists() {
 }
 
 // Switch to using the config database.
-func UseConfigDatabase() {
+func AssertUseConfigDatabase() {
 	assertUseDatabase("snap_config")
 }
 

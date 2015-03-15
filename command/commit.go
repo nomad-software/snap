@@ -3,6 +3,8 @@ package command
 
 // Imports.
 import "github.com/codegangsta/cli"
+import "github.com/nomad-software/snap/action"
+import "log"
 
 // Command.
 var Commit = cli.Command{
@@ -51,6 +53,17 @@ EXAMPLE:
 	`,
 
 	Action: func(ctx *cli.Context) {
-		println("Args:", ctx.Args().First())
+		args := ctx.Args()
+
+		if len(args) > 2 {
+			database := args.Get(0)
+			fileName := args.Get(1)
+			message  := args.Get(2)
+			action.CommitFile(database, fileName, message)
+			return
+		}
+
+		log.Println("Not enough arguments supplied.")
+		log.Fatalf("Run '%s help commit' for more information.\n", ctx.App.Name)
 	},
 }

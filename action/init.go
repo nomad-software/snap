@@ -13,4 +13,5 @@ func InitialiseDatabase(databaseName string) {
 
 	log.Printf("Initialising '%s' database for managment\n", databaseName)
 	database.InitialiseDatabase(databaseName)
+	log.Println("Database initialised successfully.")
 }

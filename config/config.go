@@ -8,6 +8,10 @@ import "github.com/mitchellh/go-homedir"
 import "io/ioutil"
 import "log"
 
+// Delimiters for use in the SQL files.
+const UP_SQL_START string = "-- SNAP_UP"
+const DOWN_SQL_START string = "-- SNAP_DOWN"
+
 // Package config struct used as a cache.
 var config *Config
 var jsonInfo string = `The config file should be in the following Json format:

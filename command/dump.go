@@ -41,7 +41,7 @@ EXAMPLE:
 			return
 		}
 
-		log.Println("No database name specified")
-		log.Fatalf("Run '%s help dump' for more information\n", ctx.App.Name)
+		log.Println("No database name specified.")
+		log.Fatalf("Run '%s help dump' for more information.\n", ctx.App.Name)
 	},
 }

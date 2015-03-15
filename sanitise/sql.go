@@ -1,5 +1,5 @@
 // Package.
-package database
+package sanitise
 
 // Imports.
 import "regexp"
@@ -19,18 +19,11 @@ import "strings"
 // 2. CREATE SCHEMA
 // 3. USE
 // 4. DELIMITER
-func sanitise(sql string) (string) {
-	sql = convertToUnixLineEndings(sql)
+func SanitiseSql(sql string) (string) {
+	sql = ConvertToUnixLineEndings(sql)
 	sql = removeCreateDatabaseStatements(sql)
 	sql = removeUseStatements(sql)
 	sql = reverseDelimiterChanges(sql)
-	return sql
-}
-
-// Convert the SQL string line endings to unix format.
-func convertToUnixLineEndings(sql string) (string) {
-	sql = strings.Replace(sql, "\r\n", "\n", -1);
-	sql = strings.Replace(sql, "\r", "\n", -1);
 	return sql
 }
 

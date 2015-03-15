@@ -2,7 +2,6 @@
 package database
 
 // Imports.
-import "fmt"
 import "github.com/nomad-software/snap/config"
 import "github.com/ziutek/mymysql/mysql"
 import "log"
@@ -11,14 +10,25 @@ import _ "github.com/ziutek/mymysql/native"
 // Package database struct.
 var db mysql.Conn
 var tx mysql.Transaction
+var tempDatabases []string = make([]string, 0)
 
 // Handle a fatal error that will halt program execution. Rollback any 
 // transaction that is pending.
-func exitOnError(err error, messages ...interface{}) {
+func exitOnError(err error, format string, values ...interface{}) {
 	if err != nil {
 		Rollback()
+		deleteTempDatabases()
 		log.Println(err)
-		log.Fatalln(messages...)
+		log.Fatalf(format + "\n", values...)
+	}
+}
+
+// Delete any temporary database that have been created.
+func deleteTempDatabases() {
+	if len(tempDatabases) > 0 {
+		for _, database := range tempDatabases {
+			_ = dropDatabase(database)
+		}
 	}
 }
 
@@ -203,5 +213,5 @@ func useDatabase(name string) (error) {
 // Assert the database can be used. If not throw a fatal error.
 func assertUseDatabase(name string) {
 	err := useDatabase(name)
-	exitOnError(err, fmt.Sprintf("Can not use '%s' database.", name))
+	exitOnError(err, "Can not use '%s' database.", name)
 }
