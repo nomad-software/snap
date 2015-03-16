@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS snap_config.initialisedDatabases (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(64) NOT NULL,
   dateInitialised TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  currentSchemaRevision INT UNSIGNED NOT NULL,
   PRIMARY KEY (id),
   UNIQUE INDEX uniqueDatabaseName (name ASC))
 ENGINE = InnoDB;

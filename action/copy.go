@@ -15,14 +15,14 @@ func CopyDatabase(source string, destination string, revision uint64) {
 		log.Fatalf("Database '%s' already exists.\n", destination)
 	}
 
-	currentRevision := database.GetCurrentRevision(source)
+	head := database.GetHeadRevision(source)
 
-	if revision > currentRevision {
+	if revision > head {
 		log.Fatalf("Database '%s' does not have a revision '%d'.\n", source, revision)
 	}
 
-	if revision == 0 {
-		revision = currentRevision
+	if revision <= 0 {
+		revision = head
 	}
 
 	database.CopyDatabase(source, destination, revision)

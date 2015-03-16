@@ -14,6 +14,12 @@ func CommitFile(databaseName string, file string, comment string) {
 	database.AssertConfigDatabaseExists()
 	database.AssertDatabaseExists(databaseName)
 
+	head    := database.GetHeadRevision(databaseName)
+	current := database.GetCurrentSchemaRevision(databaseName)
+	if head != current {
+		log.Fatalf("To create a new commit you must update the database to the latest stored revision first.")
+	}
+
 	validateSqlFileFormat(file)
 
 	database.ValidateSchemaUpdate(databaseName, file)

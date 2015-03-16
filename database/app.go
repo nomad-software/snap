@@ -49,10 +49,14 @@ func InitialiseDatabase(database string) {
 	AssertUseConfigDatabase()
 	StartTransaction()
 
-		insertId, err := InsertRow("INSERT INTO initialisedDatabases (name) VALUES (?)", database)
+		query := `INSERT INTO initialisedDatabases
+			(name, currentSchemaRevision)
+			VALUES (?, 1);`
+
+		insertId, err := InsertRow(query, database)
 		exitOnError(err, "Database '%s' is already being managed.", database)
 
-		query := `INSERT INTO revisions
+		query = `INSERT INTO revisions
 			(databaseId, revision, upSql, downSql, fullSql, comment, author)
 			VALUES (?, 1, NULL, NULL, ?, "Database initialised.", ?);`
 
@@ -142,7 +146,7 @@ func GetLogEntries(database string) (log logEntries) {
 		ORDER BY r.revision DESC;`
 
 	rows, err := Query(query, database)
-	exitOnError(err, "Can not retrieve log entries for database '%s'.\n", database)
+	exitOnError(err, "Can not retrieve log entries for database '%s'.", database)
 
 	log = make([]logEntry, 0)
 	for _, row := range rows {
@@ -151,8 +155,8 @@ func GetLogEntries(database string) (log logEntries) {
 	return;
 }
 
-// Get the current revision of the passed database.
-func GetCurrentRevision(database string) (uint64) {
+// Get the maximum revision of the passed database.
+func GetHeadRevision(database string) (uint64) {
 
 	assertDatabaseIsManaged(database)
 	AssertUseConfigDatabase()
@@ -166,9 +170,43 @@ func GetCurrentRevision(database string) (uint64) {
 		LIMIT 1;`
 
 	row, err := QueryRow(query, database)
-	exitOnError(err, "Can not retrieve current revision for database '%s'.\n", database)
+	exitOnError(err, "Can not retrieve latest revision for database '%s'.", database)
 
 	return row.Uint64(0)
+}
+
+// Get the current schema revision of the passed database. The value returned 
+// will be different to the latest revision if the database has been rolled 
+// back using the update command.
+func GetCurrentSchemaRevision(database string) (uint64) {
+
+	assertDatabaseIsManaged(database)
+	AssertUseConfigDatabase()
+
+	query := `SELECT
+		id.currentSchemaRevision
+		FROM initialisedDatabases AS id
+		WHERE id.name = ?
+		LIMIT 1;`
+
+	row, err := QueryRow(query, database)
+	exitOnError(err, "Can not retrieve schema revision for database '%s'.", database)
+
+	return row.Uint64(0)
+}
+
+// Set the current schema revision of the passed database.
+func setCurrentSchemaRevision(database string, revision uint64) {
+	assertDatabaseIsManaged(database)
+	AssertUseConfigDatabase()
+
+	query := `UPDATE initialisedDatabases AS id
+		SET id.currentSchemaRevision = ?
+		WHERE id.name = ?
+		LIMIT 1;`
+
+	err := Exec(query, revision, database)
+	exitOnError(err, "Error occurred while setting the current schema revision for database '%s'.", database)
 }
 
 // Return the update SQL for the database and revision passed. This function 
@@ -188,10 +226,33 @@ func GetUpdateSql(database string, revision uint64) (upSql string) {
 		LIMIT 1;`
 
 	row, err := QueryRow(query, database, revision)
-	exitOnError(err, "Can not retrieve update SQL for database '%s' at revision '%d'.\n", database, revision)
+	exitOnError(err, "Can not retrieve update SQL for database '%s' at revision '%d'.", database, revision)
 
 	if len(row) > 0 {
 		upSql = row.Str(0)
+	}
+	return
+}
+
+// Return the down SQL for the database and revision passed.
+func GetDownSql(database string, revision uint64) (downSql string) {
+
+	assertDatabaseIsManaged(database)
+	AssertUseConfigDatabase()
+
+	query := `SELECT
+		r.downSql
+		FROM initialisedDatabases AS id
+		INNER JOIN revisions AS r ON r.databaseId = id.id
+		WHERE id.name = ?
+		AND r.revision = ?
+		LIMIT 1;`
+
+	row, err := QueryRow(query, database, revision)
+	exitOnError(err, "Can not retrieve down SQL for database '%s' at revision '%d'.", database, revision)
+
+	if len(row) > 0 {
+		downSql = row.Str(0)
 	}
 	return
 }
@@ -211,7 +272,7 @@ func GetSchema(database string, revision uint64) (sql string) {
 		LIMIT 1;`
 
 	row, err := QueryRow(query, database, revision)
-	exitOnError(err, "Can not retrieve full SQL for database '%s' at revision '%d'.\n", database, revision)
+	exitOnError(err, "Can not retrieve full SQL for database '%s' at revision '%d'.", database, revision)
 
 	if len(row) > 0 {
 		sql = row.Str(0)
@@ -228,14 +289,14 @@ func CopyDatabase(source string, destination string, revision uint64) {
 	SetConnectionEncoding(charSet, collation)
 
 	err := createDatabase(destination, charSet, collation)
-	exitOnError(err, "Can not create new database '%s'.\n", destination)
+	exitOnError(err, "Can not create new database '%s'.", destination)
 
 	sql := GetSchema(source, revision)
 	sql  = sanitise.SanitiseSql(sql)
 
 	assertUseDatabase(destination)
 	err = ExecMulti(sql)
-	exitOnError(err, "Can not copy schema to new database '%s'.\n", destination)
+	exitOnError(err, "Can not copy schema to new database '%s'.", destination)
 }
 
 // Validate that the schema file updates then correctly reverses any changes made.
@@ -243,7 +304,7 @@ func ValidateSchemaUpdate(database string, file string) {
 	assertDatabaseIsManaged(database)
 
 	temp     := generateTempDatabaseName()
-	revision := GetCurrentRevision(database)
+	revision := GetHeadRevision(database)
 	CopyDatabase(database, temp, revision)
 
 	sql := sanitise.ReadFile(file)
@@ -251,7 +312,7 @@ func ValidateSchemaUpdate(database string, file string) {
 
 	assertUseDatabase(temp)
 	err := ExecMulti(sql)
-	exitOnError(err, "Error occurred applying file to current schema.\n")
+	exitOnError(err, "Error occurred applying file to current schema.")
 
 	currentStructure := GetSchema(database, revision)
 	updatedStructure := GenerateSchema(temp)
@@ -273,14 +334,14 @@ func CreateNewRevision(database string, file string, comment string) {
 	sql  = sanitise.SanitiseSql(sql)
 
 	databaseId     := getDatabaseId(database)
-	revision       := GetCurrentRevision(database) + 1
+	revision       := GetHeadRevision(database) + 1
 	upSql, downSql := splitSqlFile(sql)
-	fullSql        := GenerateSchema(database)
 	author         := config.GetConfig().Identity
 
 	StartTransaction()
 
 		applyUpdateToDatabase(database, upSql)
+		fullSql := GenerateSchema(database)
 
 		AssertUseConfigDatabase()
 		query := `INSERT INTO revisions
@@ -288,7 +349,9 @@ func CreateNewRevision(database string, file string, comment string) {
 			VALUES (?, ?, ?, ?, ?, ?, ?);`
 
 		_, err := InsertRow(query, databaseId, revision, upSql, downSql, fullSql, comment, author)
-		exitOnError(err, "Error occurred while creating a new revision for database '%s'.\n", database)
+		exitOnError(err, "Error occurred while creating a new revision for database '%s'.", database)
+
+		setCurrentSchemaRevision(database, revision)
 
 	Commit()
 }
@@ -297,12 +360,12 @@ func CreateNewRevision(database string, file string, comment string) {
 func getDatabaseId(database string) (uint64) {
 	assertDatabaseIsManaged(database)
 	AssertUseConfigDatabase()
-	query := `SELECT id
-		FROM initialisedDatabases
-		WHERE NAME = ?
+	query := `SELECT id.id
+		FROM initialisedDatabases AS id
+		WHERE id.name = ?
 		LIMIT 1;`
 	row, err := QueryRow(query, database)
-	exitOnError(err, "Error occurred while retrieving database '%s' id.\n", database)
+	exitOnError(err, "Error occurred while retrieving database '%s' id.", database)
 	return row.Uint64(0)
 }
 
@@ -311,7 +374,7 @@ func applyUpdateToDatabase(database string, sql string) {
 	assertDatabaseIsManaged(database)
 	assertUseDatabase(database)
 	err := ExecMulti(sql)
-	exitOnError(err, "Error occurred while modifying database '%s' schema.\n", database)
+	exitOnError(err, "Error occurred while modifying database '%s' schema.", database)
 }
 
 // Split the update SQL into the up and down sections.
@@ -347,4 +410,42 @@ func generateTempDatabaseName() (string) {
 	// Record the name to drop later to clean up.
 	tempDatabases = append(tempDatabases, name)
 	return name;
+}
+
+// Update the schema of a managed database to a previously committed revision.
+func UpdateSchemaToRevision(database string, target uint64) {
+	assertDatabaseIsManaged(database)
+	revision := GetCurrentSchemaRevision(database)
+	if target > revision {
+		for revision < target {
+			revision++
+			forwardSchema(database, revision)
+		}
+	} else {
+		for revision > target {
+			reverseSchema(database, revision)
+			revision--
+		}
+	}
+}
+
+// Foward the schema to a stored revision.
+func forwardSchema(database string, target uint64) {
+	assertDatabaseIsManaged(database)
+	sql := GetUpdateSql(database, target)
+	assertUseDatabase(database)
+	err := ExecMulti(sql)
+	exitOnError(err, "Error occurred applying update SQL to database '%s'.", database)
+	setCurrentSchemaRevision(database, target)
+}
+
+// Reverse the schema to a stored revision.
+func reverseSchema(database string, target uint64) {
+	assertDatabaseIsManaged(database)
+	sql := GetDownSql(database, target)
+	assertUseDatabase(database)
+	err := ExecMulti(sql)
+	exitOnError(err, "Error occurred applying down SQL to database '%s'.", database)
+	target--
+	setCurrentSchemaRevision(database, target)
 }

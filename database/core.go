@@ -53,7 +53,12 @@ func Close() {
 
 // Execute a prepared statement not expecting results.
 func Exec(sql string, params ...interface{}) (err error) {
-	statement, err := db.Prepare(sql)
+	var statement mysql.Stmt
+	if tx != nil && tx.IsValid() {
+		statement, err = tx.Prepare(sql)
+	} else {
+		statement, err = db.Prepare(sql)
+	}
 	if err != nil {
 		return
 	}
@@ -65,15 +70,24 @@ func Exec(sql string, params ...interface{}) (err error) {
 // very similarly to the fmt.Sprintf function and all format specifiers are 
 // supported. Escaping of parameters is handled in the wrapped library.
 func ExecUnsafe(sql string, params ...interface{}) (err error) {
-	_, _, err = db.Query(sql, params...)
+	if tx != nil && tx.IsValid() {
+		_, _, err = tx.Query(sql, params...)
+	} else {
+		_, _, err = db.Query(sql, params...)
+	}
 	return
 }
 
 // Execute a multi-statement query expecting no results. This is especially 
 // useful for executing many SQL statements in one go, such as applying DDL's 
 // to an existing schema.
-func ExecMulti(sql string) (error) {
-	result, err := db.Start(sql)
+func ExecMulti(sql string) (err error) {
+	var result mysql.Result
+	if tx != nil && tx.IsValid() {
+		result, err = tx.Start(sql)
+	} else {
+		result, err = db.Start(sql)
+	}
 	if err != nil {
 		return err
 	}
@@ -89,7 +103,12 @@ func ExecMulti(sql string) (error) {
 
 // Execute a prepared statement expecting multiple results.
 func Query(sql string, params ...interface{}) (rows []mysql.Row, err error) {
-	statement, err := db.Prepare(sql)
+	var statement mysql.Stmt
+	if tx != nil && tx.IsValid() {
+		statement, err = tx.Prepare(sql)
+	} else {
+		statement, err = db.Prepare(sql)
+	}
 	if err != nil {
 		return
 	}
@@ -105,13 +124,22 @@ func Query(sql string, params ...interface{}) (rows []mysql.Row, err error) {
 // used very similarly to the fmt.Sprintf function and all format specifiers are 
 // supported. Escaping of parameters is handled in the wrapped library.
 func QueryUnsafe(sql string, params ...interface{}) (rows []mysql.Row, err error) {
-	rows, _, err = db.Query(sql, params...)
+	if tx != nil && tx.IsValid() {
+		rows, _, err = tx.Query(sql, params...)
+	} else {
+		rows, _, err = db.Query(sql, params...)
+	}
 	return
 }
 
 // Execute a prepared statement expecting a single row result.
 func QueryRow(sql string, params ...interface{}) (row mysql.Row, err error) {
-	statement, err := db.Prepare(sql)
+	var statement mysql.Stmt
+	if tx != nil && tx.IsValid() {
+		statement, err = tx.Prepare(sql)
+	} else {
+		statement, err = db.Prepare(sql)
+	}
 	if err != nil {
 		return
 	}
@@ -127,7 +155,12 @@ func QueryRow(sql string, params ...interface{}) (row mysql.Row, err error) {
 // used very similarly to the fmt.Sprintf function and all format specifiers are 
 // supported. Escaping of parameters is handled in the wrapped library.
 func QueryRowUnsafe(sql string, params ...interface{}) (row mysql.Row, err error) {
-	rows, _, err := db.Query(sql, params...)
+	var rows []mysql.Row
+	if tx != nil && tx.IsValid() {
+		rows, _, err = tx.Query(sql, params...)
+	} else {
+		rows, _, err = db.Query(sql, params...)
+	}
 	if len(rows) > 0 {
 		row = rows[0]
 	}
@@ -157,7 +190,12 @@ func SetConnectionEncoding(charSet string, collation string) {
 // Execute a prepared statement to insert a single row. The insert id is 
 // returned.
 func InsertRow(sql string, params ...interface{}) (insertId uint64, err error) {
-	statement, err := db.Prepare(sql)
+	var statement mysql.Stmt
+	if tx != nil && tx.IsValid() {
+		statement, err = tx.Prepare(sql)
+	} else {
+		statement, err = db.Prepare(sql)
+	}
 	if err != nil {
 		return
 	}
