@@ -14,13 +14,15 @@ snap managed databases.
 ## Installation
 
 Make sure you have Go installed and correctly configured then issue the 
-following command: `go install github.com/nomad-software/snap`.
-
+following command:
+```bash
+go install github.com/nomad-software/snap
+```
 ## Usage
 
 Snap is invoked on the command line by using the program name followed by a 
 command and any required arguments. Some commands have optional arguments too.
-```
+```bash
 snap command <arguments...> [optional]
 ```
 The following is an overview of each command. To read the entire command 
@@ -43,9 +45,15 @@ documentation see snap's built-in help.
 ## Built-in help
 
 Full help is available from within the program, viewable after issuing the 
-command `snap help`. Further command specific help is available by specifing 
-the command too, like this: `snap help init`.
-
+command:
+```bash
+snap help
+```
+Further command specific help is available by specifing 
+the command too, like this:
+```bash
+snap help init
+```
 ## Supported environments
 
  * Currently only [MySql](http://www.mysql.com/) databases are supported.
