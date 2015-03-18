@@ -11,6 +11,10 @@ environments things start to get confusing very quickly. Snap is a tool
 inspired by [git](http://git-scm.com/) allowing you to manage and interrogate 
 snap managed databases.
 
+:warning: This tool is still very much in 
+[alpha](http://en.wikipedia.org/wiki/Software_release_life_cycle#Alpha). Please 
+don't use it for business critical databases.
+
 ## Installation
 
 Make sure you have Go installed and correctly configured then issue the 
