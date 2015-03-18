@@ -22,6 +22,26 @@ following command:
 ```bash
 go install github.com/nomad-software/snap
 ```
+## Configuration
+
+A configuration file must exist in your home directory to configure the 
+database server connection. The config file should be called `.snap` and look 
+like this:
+```json
+{
+    "identity": "Gary Willoughby <snap@nomad.so>",
+    "database": {
+        "user": "foo",
+        "password": "bar",
+        "protocol": "tcp",
+        "host": "localhost",
+        "port": "3306"
+    }
+}
+```
+The database protocol, host and port fields are optional and default to the 
+values shown above.
+
 ## Usage
 
 Snap is invoked on the command line by using the program name followed by a 
