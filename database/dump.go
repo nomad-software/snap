@@ -1,4 +1,3 @@
-// Package.
 package database
 
 // Imports.

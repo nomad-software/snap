@@ -1,4 +1,3 @@
-// Package.
 package config
 
 // Imports.
