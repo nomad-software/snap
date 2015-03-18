@@ -1,4 +1,8 @@
-// Package.
+// Snap is a proof of concept tool to start exploring version control for 
+// database schemas. Usually when maintaining and updating database schemas 
+// over multiple environments things start to get confusing very quickly. Snap 
+// is a tool inspired by git allowing you to manage and interrogate snap 
+// managed databases.
 package main
 
 // Imports.
