@@ -1,0 +1,5 @@
+-- SNAP_UP
+ALTER TABLE `user` ADD COLUMN `email` VARCHAR(255) NOT NULL AFTER `name`;
+
+-- SNAP_DOWN
+ALTER TABLE `user` DROP COLUMN `email`;

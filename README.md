@@ -3,6 +3,8 @@
 
 ---
 
+:warning: This project has been abandoned!!!
+
 ## Overview
 
 Snap is a proof of concept tool to start exploring version control for database 
@@ -20,7 +22,7 @@ Please don't use it for business critical databases as data loss may occur.
 Make sure you have Go installed and correctly configured then issue the 
 following command:
 ```bash
-go install github.com/nomad-software/snap
+go get github.com/nomad-software/snap
 ```
 ## Configuration
 

@@ -1,0 +1,3 @@
+[{[{%!s(diffmatchpatch.Operation=0) T NULL,
+} {%!s(diffmatchpatch.Operation=1)   `email` varchar(255) NOT NULL,
+} {%!s(diffmatchpatch.Operation=0)   `added}] %!s(int=629) %!s(int=629) %!s(int=16) %!s(int=49)}]
